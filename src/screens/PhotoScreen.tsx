@@ -1,62 +1,76 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Colors, Spacing, BorderRadius, FontSize } from '../theme/colors';
 import StepIndicator from '../components/StepIndicator';
+import { lotService } from '../services/lotService';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function PhotoScreen({ navigation, route }: any) {
+  const { user } = useAuth();
   const [photoTaken, setPhotoTaken] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleTakePhoto = () => {
-    // Simulation de prise de photo
     setPhotoTaken(true);
   };
 
-  const handleRegister = () => {
-    const lotData = route.params.lotData;
-    const newLot = {
-      id: `TOGO-2026-00${Math.floor(Math.random() * 9) + 1}`,
-      fullId: `TOGO-2026-00${Math.floor(Math.random() * 9) + 1}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-      ...lotData,
-      status: 'CREATED',
-      createdAt: new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }),
-    };
-    navigation.navigate('Success', { lot: newLot });
+  const handleRegister = async () => {
+    const { lotData } = route.params;
+    setLoading(true);
+
+    try {
+      const lotID = `LOT-${Date.now().toString(36).toUpperCase()}`;
+      const response = await lotService.create({
+        lotID,
+        weightKg: lotData.weight,
+        harvestDate: lotData.harvestDate || new Date().toISOString(),
+        region: lotData.cultureMode,
+        latitude: lotData.location?.lat || 6.12345,
+        longitude: lotData.location?.lng || 1.23456,
+        ipfsPhotoHash: photoTaken ? 'ipfs://mock-hash-' + Date.now() : undefined,
+      });
+
+      navigation.navigate('Success', {
+        lot: {
+          id: lotID,
+          fullId: lotID,
+          species: lotData.species,
+          weight: lotData.weight,
+          cultureMode: lotData.cultureMode,
+          harvestDate: lotData.harvestDate,
+          location: lotData.location,
+          status: 'CREATED',
+          createdAt: new Date().toLocaleDateString('fr-FR'),
+        },
+      });
+    } catch (err: any) {
+      Alert.alert('Erreur', err.response?.data?.error || "Échec de l'enregistrement");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Photo du lot</Text>
         <View style={styles.backBtn} />
       </View>
 
-      {/* Step indicator */}
-      <StepIndicator
-        currentStep={3}
-        totalSteps={3}
-        labels={['Infos', 'Localisation', 'Photo']}
-      />
+      <StepIndicator currentStep={3} totalSteps={3} labels={['Infos', 'Localisation', 'Photo']} />
 
       <View style={styles.content}>
-        {/* Camera viewfinder */}
         <View style={styles.viewfinder}>
-          {/* Corner markers */}
           <View style={[styles.corner, styles.topLeft]} />
           <View style={[styles.corner, styles.topRight]} />
           <View style={[styles.corner, styles.bottomLeft]} />
           <View style={[styles.corner, styles.bottomRight]} />
 
           {!photoTaken ? (
-            <Text style={styles.viewfinderText}>
-              Photographiez votre lot de cacao
-            </Text>
+            <Text style={styles.viewfinderText}>Photographiez votre lot de cacao</Text>
           ) : (
             <View style={styles.photoPreview}>
               <Text style={styles.photoEmoji}>🫘</Text>
@@ -64,7 +78,6 @@ export default function PhotoScreen({ navigation, route }: any) {
             </View>
           )}
 
-          {/* Thumbnail preview */}
           {photoTaken && (
             <View style={styles.thumbnailPreview}>
               <Text style={styles.thumbnailEmoji}>🫘</Text>
@@ -72,7 +85,6 @@ export default function PhotoScreen({ navigation, route }: any) {
           )}
         </View>
 
-        {/* Take photo button */}
         <TouchableOpacity
           style={[styles.captureBtn, photoTaken && styles.captureBtnDone]}
           activeOpacity={0.8}
@@ -83,21 +95,24 @@ export default function PhotoScreen({ navigation, route }: any) {
           </Text>
         </TouchableOpacity>
 
-        {/* Register button */}
         <TouchableOpacity
-          style={[styles.registerBtn, !photoTaken && styles.registerBtnDisabled]}
+          style={[styles.registerBtn, (!photoTaken || loading) && styles.registerBtnDisabled]}
           activeOpacity={0.8}
           onPress={handleRegister}
-          disabled={!photoTaken}
+          disabled={!photoTaken || loading}
         >
-          <Text style={styles.registerBtnText}>
-            Enregistrer sur la blockchain →
-          </Text>
+          {loading ? (
+            <ActivityIndicator color={Colors.lightNeutral} />
+          ) : (
+            <Text style={styles.registerBtnText}>Enregistrer sur la blockchain →</Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>
   );
 }
+
+// ... styles (identiques à l'ancien fichier) ...
 
 const styles = StyleSheet.create({
   container: {

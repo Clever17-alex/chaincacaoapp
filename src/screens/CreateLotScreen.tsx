@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Colors, Spacing, BorderRadius, FontSize } from '../theme/colors';
 import StepIndicator from '../components/StepIndicator';
@@ -15,117 +16,82 @@ const CULTURE_MODES = ['Agroforesterie', 'Monoculture', 'Biologique', 'Mixte'];
 
 export default function CreateLotScreen({ navigation }: any) {
   const [species, setSpecies] = useState('Trinitario');
-  const [weight, setWeight] = useState('1 500');
+  const [weight, setWeight] = useState('');
   const [cultureMode, setCultureMode] = useState('Agroforesterie');
-  const [harvestDate, setHarvestDate] = useState('15 / 12 / 2025');
+  const [harvestDate, setHarvestDate] = useState('');
   const [note, setNote] = useState('');
   const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
   const [showModeDropdown, setShowModeDropdown] = useState(false);
 
   const handleNext = () => {
+    const weightNum = parseInt(weight.replace(/\s/g, ''), 10) || 0;
     navigation.navigate('GPS', {
-      lotData: { species, weight, cultureMode, harvestDate, note },
+      lotData: { species, weight: weightNum, cultureMode, harvestDate, note },
     });
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-        >
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nouveau lot</Text>
         <View style={styles.backBtn} />
       </View>
 
-      {/* Step indicator */}
-      <StepIndicator
-        currentStep={1}
-        totalSteps={3}
-        labels={['Infos', 'Localisation', 'Photo']}
-      />
+      <StepIndicator currentStep={1} totalSteps={3} labels={['Infos', 'Localisation', 'Photo']} />
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Species dropdown */}
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Text style={styles.label}>Espèce de cacao</Text>
-        <TouchableOpacity
-          style={styles.input}
-          onPress={() => setShowSpeciesDropdown(!showSpeciesDropdown)}
-        >
+        <TouchableOpacity style={styles.input} onPress={() => setShowSpeciesDropdown(!showSpeciesDropdown)}>
           <Text style={styles.inputText}>{species}</Text>
           <Text style={styles.chevron}>▼</Text>
         </TouchableOpacity>
         {showSpeciesDropdown && (
           <View style={styles.dropdown}>
             {SPECIES.map((s) => (
-              <TouchableOpacity
-                key={s}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setSpecies(s);
-                  setShowSpeciesDropdown(false);
-                }}
-              >
+              <TouchableOpacity key={s} style={styles.dropdownItem} onPress={() => { setSpecies(s); setShowSpeciesDropdown(false); }}>
                 <Text style={styles.dropdownText}>{s}</Text>
               </TouchableOpacity>
             ))}
           </View>
         )}
 
-        {/* Weight */}
         <Text style={styles.label}>Poids estimé (kg)</Text>
         <TextInput
           style={styles.input}
           value={weight}
           onChangeText={setWeight}
           keyboardType="numeric"
+          placeholder="1500"
           placeholderTextColor={Colors.gray}
         />
 
-        {/* Culture mode dropdown */}
         <Text style={styles.label}>Mode de culture</Text>
-        <TouchableOpacity
-          style={styles.input}
-          onPress={() => setShowModeDropdown(!showModeDropdown)}
-        >
+        <TouchableOpacity style={styles.input} onPress={() => setShowModeDropdown(!showModeDropdown)}>
           <Text style={styles.inputText}>{cultureMode}</Text>
           <Text style={styles.chevron}>▼</Text>
         </TouchableOpacity>
         {showModeDropdown && (
           <View style={styles.dropdown}>
             {CULTURE_MODES.map((m) => (
-              <TouchableOpacity
-                key={m}
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setCultureMode(m);
-                  setShowModeDropdown(false);
-                }}
-              >
+              <TouchableOpacity key={m} style={styles.dropdownItem} onPress={() => { setCultureMode(m); setShowModeDropdown(false); }}>
                 <Text style={styles.dropdownText}>{m}</Text>
               </TouchableOpacity>
             ))}
           </View>
         )}
 
-        {/* Date */}
         <Text style={styles.label}>Date de récolte</Text>
-        <TouchableOpacity style={styles.input}>
-          <Text style={[styles.inputText, { fontFamily: 'monospace' }]}>
-            {harvestDate}
-          </Text>
-          <Text style={styles.chevron}>📅</Text>
-        </TouchableOpacity>
+        <TextInput
+          style={styles.input}
+          value={harvestDate}
+          onChangeText={setHarvestDate}
+          placeholder="2025-12-15"
+          placeholderTextColor={Colors.gray}
+        />
 
-        {/* Note */}
         <Text style={styles.label}>Note (optionnel)</Text>
         <TextInput
           style={[styles.input, styles.textarea]}
@@ -137,18 +103,15 @@ export default function CreateLotScreen({ navigation }: any) {
           numberOfLines={3}
         />
 
-        {/* Next button */}
-        <TouchableOpacity
-          style={styles.nextBtn}
-          activeOpacity={0.8}
-          onPress={handleNext}
-        >
+        <TouchableOpacity style={styles.nextBtn} activeOpacity={0.8} onPress={handleNext}>
           <Text style={styles.nextBtnText}>Suivant — Localisation →</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
   );
 }
+
+// ... styles (identiques à l'ancien fichier) ...
 
 const styles = StyleSheet.create({
   container: {

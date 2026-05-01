@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,21 +6,32 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { Colors, Spacing, BorderRadius, FontSize } from '../theme/colors';
 import StatsCard from '../components/StatsCard';
 import LotCard from '../components/LotCard';
 import BottomNav from '../components/BottomNav';
-import { MOCK_LOTS } from '../data/mockData';
+import { useAuth } from '../contexts/AuthContext';
+import { lotService } from '../services/lotService';
 
 export default function HomeScreen({ navigation }: any) {
   const { navigate } = navigation;
+  const { user, logout } = useAuth();
+  const [lots, setLots] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const activeLots = MOCK_LOTS.filter(
+  useEffect(() => {
+    // Pour l'instant on garde les données mock
+    // Plus tard : remplacer par lotService.getAll()
+    setLoading(false);
+  }, []);
+
+  const activeLots = lots.filter(
     (l) => l.status === 'CREATED' || l.status === 'PROCESSING'
   ).length;
-  const inTransit = MOCK_LOTS.filter((l) => l.status === 'EXPORTED').length;
-  const exported = MOCK_LOTS.filter(
+  const inTransit = lots.filter((l) => l.status === 'EXPORTED').length;
+  const exported = lots.filter(
     (l) => l.status === 'DELIVERED' || l.status === 'EUDR_STATEMENT'
   ).length;
 
@@ -37,12 +48,19 @@ export default function HomeScreen({ navigation }: any) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>Bonjour, Kofi</Text>
-          <Text style={styles.subtitle}>AGRI-TOGO-0045 · Womé</Text>
+          <Text style={styles.greeting}>Bonjour, {user?.name || 'Kofi'}</Text>
+          <Text style={styles.subtitle}>
+            {user?.actorID || 'AGRI-TOGO-0045'} · {user?.organization || 'Womé'}
+          </Text>
         </View>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>KM</Text>
-        </View>
+        <TouchableOpacity onPress={() => navigate('Profile')}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {user?.name ? user.name.charAt(0).toUpperCase() : 'K'}
+              {user?.name ? user.name.split(' ')[1]?.charAt(0).toUpperCase() || '' : 'M'}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -50,22 +68,30 @@ export default function HomeScreen({ navigation }: any) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Stats */}
         <StatsCard stats={stats} />
 
-        {/* Section title */}
         <Text style={styles.sectionTitle}>Mes lots récents</Text>
 
-        {/* Lot cards */}
-        {MOCK_LOTS.map((lot) => (
-          <LotCard
-            key={lot.id}
-            lot={lot}
-            onPress={() => navigate('LotDetail', { lot })}
-          />
-        ))}
+        {loading ? (
+          <ActivityIndicator color={Colors.accentWarm} style={{ marginTop: 20 }} />
+        ) : lots.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>🌱</Text>
+            <Text style={styles.emptyText}>Aucun lot pour le moment</Text>
+            <Text style={styles.emptySubtext}>
+              Enregistrez votre première récolte
+            </Text>
+          </View>
+        ) : (
+          lots.map((lot) => (
+            <LotCard
+              key={lot.id}
+              lot={lot}
+              onPress={() => navigate('LotDetail', { lot })}
+            />
+          ))
+        )}
 
-        {/* CTA Button */}
         <TouchableOpacity
           style={styles.ctaButton}
           activeOpacity={0.8}
@@ -75,7 +101,6 @@ export default function HomeScreen({ navigation }: any) {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Bottom Nav */}
       <BottomNav
         activeTab="home"
         onTabPress={(tab) => {
@@ -147,6 +172,26 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: Spacing.md,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xxl,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: Spacing.md,
+  },
+  emptyText: {
+    fontFamily: 'System',
+    fontSize: FontSize.lg,
+    fontWeight: '600',
+    color: Colors.primaryDark,
+  },
+  emptySubtext: {
+    fontFamily: 'System',
+    fontSize: FontSize.sm,
+    color: Colors.gray,
+    marginTop: 4,
   },
   ctaButton: {
     backgroundColor: Colors.accentWarm,

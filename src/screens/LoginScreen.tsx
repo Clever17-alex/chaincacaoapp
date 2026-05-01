@@ -8,16 +8,37 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Colors, Spacing, BorderRadius, FontSize } from '../theme/colors';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen({ navigation }: any) {
-  const [phone, setPhone] = useState('');
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleLogin = () => {
-    navigation.navigate('Home');
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError('Veuillez remplir tous les champs');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      await login(email, password);
+      navigation.navigate('Home');
+    } catch (err: any) {
+      const message = err.response?.data?.error || 'Erreur de connexion. Vérifiez vos identifiants.';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -44,27 +65,36 @@ export default function LoginScreen({ navigation }: any) {
         <View style={styles.form}>
           <Text style={styles.formTitle}>Se connecter</Text>
 
-          <Text style={styles.label}>Téléphone</Text>
-          <View style={styles.phoneRow}>
-            <View style={styles.countryCode}>
-              <Text style={styles.countryCodeText}>+228</Text>
+          {/* Message d'erreur */}
+          {error ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
             </View>
-            <TextInput
-              style={styles.phoneInput}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="90 00 00 00"
-              placeholderTextColor={Colors.gray}
-              keyboardType="phone-pad"
-            />
-          </View>
+          ) : null}
+
+          <Text style={styles.label}>Email ou Téléphone</Text>
+          <TextInput
+            style={styles.input}
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              setError('');
+            }}
+            placeholder="kofi@email.com ou +228 90 00 00 00"
+            placeholderTextColor={Colors.gray}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
 
           <Text style={styles.label}>Mot de passe</Text>
           <View style={styles.passwordRow}>
             <TextInput
               style={styles.passwordInput}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                setPassword(text);
+                setError('');
+              }}
               placeholder="••••••••"
               placeholderTextColor={Colors.gray}
               secureTextEntry={!showPassword}
@@ -82,11 +112,16 @@ export default function LoginScreen({ navigation }: any) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.loginBtn}
+            style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
             activeOpacity={0.8}
             onPress={handleLogin}
+            disabled={loading}
           >
-            <Text style={styles.loginBtnText}>Se connecter</Text>
+            {loading ? (
+              <ActivityIndicator color={Colors.white} />
+            ) : (
+              <Text style={styles.loginBtnText}>Se connecter</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.divider}>
@@ -172,6 +207,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: Spacing.lg,
   },
+  errorBox: {
+    backgroundColor: Colors.errorBg,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.alertRed,
+  },
+  errorText: {
+    fontFamily: 'System',
+    fontSize: FontSize.sm,
+    color: Colors.alertRed,
+  },
   label: {
     fontFamily: 'System',
     fontSize: FontSize.sm,
@@ -179,26 +227,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     marginTop: Spacing.md,
   },
-  phoneRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-  },
-  countryCode: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 50,
-  },
-  countryCodeText: {
-    fontFamily: 'System',
-    fontSize: FontSize.md,
-    color: Colors.white,
-    fontWeight: '600',
-  },
-  phoneInput: {
-    flex: 1,
+  input: {
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.md,
@@ -245,6 +274,9 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
     minHeight: 52,
     justifyContent: 'center',
+  },
+  loginBtnDisabled: {
+    opacity: 0.7,
   },
   loginBtnText: {
     fontFamily: 'System',

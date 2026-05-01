@@ -7,33 +7,41 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
+  Alert,
 } from 'react-native';
 import { Colors, Spacing, FontSize, BorderRadius } from '../theme/colors';
 import BottomNav from '../components/BottomNav';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function ProfileScreen({ navigation }: any) {
   const { navigate } = navigation;
+  const { user, logout } = useAuth();
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState('Kofi Mensah');
-  const [village, setVillage] = useState('Womé, Plateaux');
-  const [phone, setPhone] = useState('+228 90 00 00 00');
-  const [email, setEmail] = useState('kofi.mensah@email.tg');
+  const [name, setName] = useState(user?.name || '');
+  const [organization, setOrganization] = useState(user?.organization || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [scaleAnim] = useState(new Animated.Value(1));
 
   const handleSave = () => {
     setEditing(false);
     Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 1.1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
+      Animated.timing(scaleAnim, { toValue: 1.1, duration: 150, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
     ]).start();
+  };
+
+  const handleLogout = () => {
+    Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Déconnecter',
+        style: 'destructive',
+        onPress: async () => {
+          await logout();
+          navigate('Login');
+        },
+      },
+    ]);
   };
 
   const menuItems = [
@@ -47,125 +55,67 @@ export default function ProfileScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profil</Text>
-        <TouchableOpacity
-          style={styles.editBtn}
-          onPress={() => setEditing(!editing)}
-        >
-          <Text style={styles.editBtnText}>
-            {editing ? 'Annuler' : 'Modifier'}
-          </Text>
+        <TouchableOpacity style={styles.editBtn} onPress={() => setEditing(!editing)}>
+          <Text style={styles.editBtnText}>{editing ? 'Annuler' : 'Modifier'}</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Avatar + ID */}
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.avatarSection}>
-          <TouchableOpacity activeOpacity={0.8}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>KM</Text>
-              <View style={styles.cameraBadge}>
-                <Text style={styles.cameraIcon}>📷</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.farmerId}>AGRI-TOGO-0045</Text>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {name ? name.charAt(0).toUpperCase() : 'K'}
+              {name.split(' ')[1]?.charAt(0).toUpperCase() || 'M'}
+            </Text>
+          </View>
+          <Text style={styles.farmerId}>{user?.actorID || 'AGRI-TOGO-0045'}</Text>
           <Text style={styles.farmerLabel}>Producteur vérifié</Text>
         </View>
 
-        {/* Informations */}
         <View style={styles.infoCard}>
           <Text style={styles.cardTitle}>Informations personnelles</Text>
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Nom complet</Text>
             {editing ? (
-              <TextInput
-                style={styles.fieldInput}
-                value={name}
-                onChangeText={setName}
-              />
+              <TextInput style={styles.fieldInput} value={name} onChangeText={setName} />
             ) : (
               <Text style={styles.fieldValue}>{name}</Text>
             )}
           </View>
-
           <View style={styles.divider} />
 
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Village / Localité</Text>
+            <Text style={styles.fieldLabel}>Organisation</Text>
             {editing ? (
-              <TextInput
-                style={styles.fieldInput}
-                value={village}
-                onChangeText={setVillage}
-              />
+              <TextInput style={styles.fieldInput} value={organization} onChangeText={setOrganization} />
             ) : (
-              <Text style={styles.fieldValue}>{village}</Text>
+              <Text style={styles.fieldValue}>{organization}</Text>
             )}
           </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Téléphone</Text>
-            {editing ? (
-              <TextInput
-                style={styles.fieldInput}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-            ) : (
-              <Text style={styles.fieldValue}>{phone}</Text>
-            )}
-          </View>
-
           <View style={styles.divider} />
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Email</Text>
-            {editing ? (
-              <TextInput
-                style={styles.fieldInput}
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-              />
-            ) : (
-              <Text style={styles.fieldValue}>{email}</Text>
-            )}
+            <Text style={styles.fieldValue}>{email}</Text>
           </View>
         </View>
 
-        {/* Bouton sauvegarder */}
         {editing && (
           <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-            <TouchableOpacity
-              style={styles.saveBtn}
-              activeOpacity={0.8}
-              onPress={handleSave}
-            >
+            <TouchableOpacity style={styles.saveBtn} activeOpacity={0.8} onPress={handleSave}>
               <Text style={styles.saveBtnText}>💾 Enregistrer les modifications</Text>
             </TouchableOpacity>
           </Animated.View>
         )}
 
-        {/* Menu */}
         <View style={styles.menuCard}>
           {menuItems.map((item, index) => (
             <React.Fragment key={index}>
               {index > 0 && <View style={styles.menuDivider} />}
-              <TouchableOpacity
-                style={styles.menuItem}
-                activeOpacity={0.6}
-              >
+              <TouchableOpacity style={styles.menuItem} activeOpacity={0.6}>
                 <Text style={styles.menuIcon}>{item.icon}</Text>
                 <Text style={styles.menuLabel}>{item.label}</Text>
                 <Text style={styles.menuArrow}>→</Text>
@@ -174,35 +124,13 @@ export default function ProfileScreen({ navigation }: any) {
           ))}
         </View>
 
-        {/* Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>3</Text>
-            <Text style={styles.statLabel}>Lots actifs</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>12</Text>
-            <Text style={styles.statLabel}>Lots totaux</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>4.8</Text>
-            <Text style={styles.statLabel}>Note qualité</Text>
-          </View>
-        </View>
-
-        {/* Déconnexion */}
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          activeOpacity={0.7}
-          onPress={() => navigate('Login')}
-        >
+        <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7} onPress={handleLogout}>
           <Text style={styles.logoutBtnText}>🚪 Se déconnecter</Text>
         </TouchableOpacity>
 
         <Text style={styles.version}>ChainCacao v1.0.0 · Hackathon MIABE 2026</Text>
       </ScrollView>
 
-      {/* Bottom Nav */}
       <BottomNav
         activeTab="profile"
         onTabPress={(tab) => {
@@ -215,6 +143,8 @@ export default function ProfileScreen({ navigation }: any) {
     </View>
   );
 }
+
+// ... styles (identiques à l'ancien fichier ProfileScreen) ...
 
 const styles = StyleSheet.create({
   container: {

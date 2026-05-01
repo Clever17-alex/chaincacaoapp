@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, StyleSheet, BackHandler, Animated } from 'react-native';
+import { View, StyleSheet, BackHandler, Animated, ActivityIndicator } from 'react-native';
 import { Colors } from '../theme/colors';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -36,7 +37,8 @@ export const NavContext = React.createContext<{
 
 const DARK_SCREENS = ['Splash', 'Login', 'Register', 'Photo', 'Success'];
 
-export default function AppNavigator() {
+function NavigatorContent() {
+  const { isLoading, isAuthenticated } = useAuth();
   const [stack, setStack] = useState<Route[]>([{ name: 'Splash' }]);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -91,6 +93,15 @@ export default function AppNavigator() {
   const currentRoute = stack[stack.length - 1];
   const isDark = DARK_SCREENS.includes(currentRoute.name);
 
+  // Loading screen
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: Colors.darkBase, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.accentWarm} />
+      </View>
+    );
+  }
+
   const renderScreen = () => {
     const props = {
       navigation: { navigate, goBack },
@@ -143,6 +154,14 @@ export default function AppNavigator() {
         </Animated.View>
       </View>
     </NavContext.Provider>
+  );
+}
+
+export default function AppNavigator() {
+  return (
+    <AuthProvider>
+      <NavigatorContent />
+    </AuthProvider>
   );
 }
 
