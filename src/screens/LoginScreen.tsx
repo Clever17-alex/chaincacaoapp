@@ -1,3 +1,4 @@
+import Logo from "../components/Logo";
 import React, { useState } from "react";
 import {
   View,
@@ -53,13 +54,7 @@ export default function LoginScreen({ navigation }: any) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoArea}>
-          <View style={styles.hexagon}>
-            <Text style={styles.hexChar}>₵</Text>
-          </View>
-          <Text style={styles.appName}>ChainCacao</Text>
-          <Text style={styles.tagline}>
-            De la ferme togolaise à l'Europe.{"\n"}En 3 minutes. Sans fraude.
-          </Text>
+          <Logo size={70} showText={true} showTagline={true} />
         </View>
 
         <View style={styles.form}>
@@ -157,37 +152,6 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xl,
   },
   logoArea: { alignItems: "center", marginBottom: Spacing.xl },
-  hexagon: {
-    width: 64,
-    height: 64,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.accentWarm,
-    justifyContent: "center",
-    alignItems: "center",
-    transform: [{ rotate: "45deg" }],
-    marginBottom: Spacing.lg,
-  },
-  hexChar: {
-    fontSize: 28,
-    color: Colors.white,
-    fontWeight: "bold",
-    transform: [{ rotate: "-45deg" }],
-  },
-  appName: {
-    fontFamily: "serif",
-    fontSize: 28,
-    fontWeight: "700",
-    color: Colors.white,
-    marginBottom: Spacing.sm,
-  },
-  tagline: {
-    fontFamily: "System",
-    fontSize: FontSize.md,
-    color: Colors.lightNeutral,
-    opacity: 0.6,
-    textAlign: "center",
-    lineHeight: 22,
-  },
   form: {
     backgroundColor: Colors.primaryDark,
     borderRadius: BorderRadius.lg,

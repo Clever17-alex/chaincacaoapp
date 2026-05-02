@@ -9,6 +9,7 @@ import {
   Image,
 } from "react-native";
 import { Colors, Spacing, BorderRadius, FontSize } from "../theme/colors";
+import Logo from "../components/Logo";
 import { lotService } from "../services/lotService";
 
 export default function SuccessScreen({ navigation, route }: any) {
@@ -47,11 +48,24 @@ export default function SuccessScreen({ navigation, route }: any) {
       const lotId = lot.id || lot.fullId || "LOT-UNKNOWN";
       console.log("Récupération QR pour:", lotId);
       const qrData = await lotService.getQRCode(lotId);
+      console.log("QR Data reçue:", JSON.stringify(qrData).substring(0, 100));
+
       if (qrData && qrData.qrCode) {
+        console.log("QR Code trouvé, longueur:", qrData.qrCode.length);
+        console.log("Début QR:", qrData.qrCode.substring(0, 30));
         setQrBase64(qrData.qrCode);
+      } else {
+        console.log(
+          "Pas de qrCode dans la réponse, clés:",
+          Object.keys(qrData || {})
+        );
       }
-    } catch (err) {
-      console.log("QR non disponible, affichage mock");
+    } catch (err: any) {
+      console.log(
+        "Erreur QR:",
+        err.response?.status,
+        err.response?.data || err.message
+      );
     } finally {
       setLoadingQR(false);
     }
@@ -89,7 +103,7 @@ export default function SuccessScreen({ navigation, route }: any) {
             </View>
           ) : qrBase64 ? (
             <Image
-              source={{ uri: `data:image/png;base64,${qrBase64}` }}
+              source={{ uri: qrBase64 }}
               style={styles.qrImage}
               resizeMode="contain"
             />
@@ -104,7 +118,7 @@ export default function SuccessScreen({ navigation, route }: any) {
                 <View style={styles.qrRow}>
                   <View style={styles.qrSpace} />
                   <View style={styles.qrCenterLogo}>
-                    <Text style={styles.qrLogoText}>₵</Text>
+                    <Logo size={40} />
                   </View>
                   <View style={styles.qrSpace} />
                 </View>
@@ -254,11 +268,9 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: BorderRadius.sm,
-    backgroundColor: Colors.accentWarm,
     justifyContent: "center",
     alignItems: "center",
   },
-  qrLogoText: { fontSize: 20, color: Colors.white, fontWeight: "bold" },
   qrMockLabel: {
     fontFamily: "System",
     fontSize: FontSize.xs,

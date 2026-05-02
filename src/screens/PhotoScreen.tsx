@@ -13,17 +13,21 @@ import { Colors, Spacing, BorderRadius, FontSize } from "../theme/colors";
 import StepIndicator from "../components/StepIndicator";
 import { lotService } from "../services/lotService";
 import { useAuth } from "../contexts/AuthContext";
+import { useLots } from "../contexts/LotContext";
 import * as ImagePicker from "expo-image-picker";
 import { CameraView, useCameraPermissions } from "expo-camera";
 
+
 export default function PhotoScreen({ navigation, route }: any) {
   const { user } = useAuth();
+  const { addLot } = useLots();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<any>(null);
+  
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -82,9 +86,8 @@ export default function PhotoScreen({ navigation, route }: any) {
 
     try {
       const lotID = `LOT-${Date.now().toString(36).toUpperCase()}`;
-
-      // Utiliser la date AUJOURD'HUI au format ISO 8601
       const harvestDateISO = new Date().toISOString();
+
       console.log("Date envoyée:", harvestDateISO);
 
       const body = {
@@ -98,7 +101,7 @@ export default function PhotoScreen({ navigation, route }: any) {
         ipfsPhotoHash: photoBase64
           ? `ipfs://photo-${Date.now()}`
           : "ipfs://no-photo",
-        areaHectares: 2.5, // ← AJOUTE CETTE LIGNE
+        areaHectares: 2.5,
       };
 
       console.log("Envoi lot:", JSON.stringify(body, null, 2));
@@ -106,20 +109,25 @@ export default function PhotoScreen({ navigation, route }: any) {
       const response = await lotService.create(body);
       console.log("Lot créé avec succès:", response);
 
-      navigation.navigate("Success", {
-        lot: {
-          id: response?.lotID || lotID,
-          fullId: response?.lotID || lotID,
-          species: lotData.species || "Cacao",
-          weight: lotData.weight || 0,
-          cultureMode: lotData.cultureMode || "Agroforesterie",
-          harvestDate: new Date().toLocaleDateString("fr-FR"),
-          location: lotData.location,
-          photoUri,
-          status: "CREATED",
-          createdAt: new Date().toLocaleDateString("fr-FR"),
-        },
-      });
+      // Construire l'objet lot pour le contexte
+      const newLot = {
+        id: response?.lotID || lotID,
+        fullId: response?.lotID || lotID,
+        species: lotData.species || "Cacao",
+        weight: lotData.weight || 0,
+        cultureMode: lotData.cultureMode || "Agroforesterie",
+        harvestDate: new Date().toLocaleDateString("fr-FR"),
+        location: lotData.location,
+        photoUri: photoUri || undefined,
+        status: "CREATED",
+        createdAt: new Date().toLocaleDateString("fr-FR"),
+      };
+
+      // AJOUTER AU CONTEXTE POUR HOME SCREEN
+      addLot(newLot);    // ✅ CORRIGÉ
+
+      // Naviguer vers succès
+      navigation.navigate("Success", { lot: newLot });
     } catch (err: any) {
       console.log(
         "Erreur création lot:",

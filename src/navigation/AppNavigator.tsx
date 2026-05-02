@@ -21,6 +21,7 @@ import NotificationsScreen from "../screens/NotificationsScreen";
 import HistoryScreen from "../screens/HistoryScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import EUDRScreen from "../screens/EUDRScreen";
+import { LotProvider } from '../contexts/LotContext';
 
 export interface NavParams {
   lot?: any;
@@ -188,7 +189,9 @@ function NavigatorContent() {
 export default function AppNavigator() {
   return (
     <AuthProvider>
-      <NavigatorContent />
+      <LotProvider>
+        <NavigatorContent />
+      </LotProvider>
     </AuthProvider>
   );
 }

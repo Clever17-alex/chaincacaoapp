@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,57 +7,76 @@ import {
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
-} from 'react-native';
-import { Colors, Spacing, BorderRadius, FontSize } from '../theme/colors';
-import StatsCard from '../components/StatsCard';
-import LotCard from '../components/LotCard';
-import BottomNav from '../components/BottomNav';
-import { useAuth } from '../contexts/AuthContext';
-import { lotService } from '../services/lotService';
+} from "react-native";
+import { Colors, Spacing, BorderRadius, FontSize } from "../theme/colors";
+import StatsCard from "../components/StatsCard";
+import LotCard from "../components/LotCard";
+import BottomNav from "../components/BottomNav";
+import { useAuth } from "../contexts/AuthContext";
+import { lotService } from "../services/lotService";
+import { MOCK_LOTS } from "../data/mockData";
 
 export default function HomeScreen({ navigation }: any) {
   const { navigate } = navigation;
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [lots, setLots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Pour l'instant on garde les données mock
-    // Plus tard : remplacer par lotService.getAll()
-    setLoading(false);
-  }, []);
+  // Recharger les lots chaque fois que l'écran est affiché
+  useEffect(
+    useCallback(() => {
+      loadLots();
+    }, [])
+  );
+
+  const loadLots = async () => {
+    setLoading(true);
+    try {
+      // Essayer de charger depuis l'API
+      // Pour l'instant on utilise les données mock
+      // TODO: remplacer par const data = await lotService.getAll();
+      setLots(MOCK_LOTS);
+    } catch (err) {
+      console.log("Erreur chargement lots, utilisation mock");
+      setLots(MOCK_LOTS);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const activeLots = lots.filter(
-    (l) => l.status === 'CREATED' || l.status === 'PROCESSING'
+    (l) => l.status === "CREATED" || l.status === "PROCESSING"
   ).length;
-  const inTransit = lots.filter((l) => l.status === 'EXPORTED').length;
+  const inTransit = lots.filter((l) => l.status === "EXPORTED").length;
   const exported = lots.filter(
-    (l) => l.status === 'DELIVERED' || l.status === 'EUDR_STATEMENT'
+    (l) => l.status === "DELIVERED" || l.status === "EUDR_STATEMENT"
   ).length;
 
   const stats = [
-    { value: `${activeLots}`, label: 'Lots actifs' },
-    { value: `${inTransit}`, label: 'En transit' },
-    { value: `${exported}`, label: 'Exportés' },
+    { value: `${activeLots}`, label: "Lots actifs" },
+    { value: `${inTransit}`, label: "En transit" },
+    { value: `${exported}`, label: "Exportés" },
   ];
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primaryDark} />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={Colors.primaryDark}
+      />
 
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>Bonjour, {user?.name || 'Kofi'}</Text>
+          <Text style={styles.greeting}>Bonjour, {user?.name || "Kofi"}</Text>
           <Text style={styles.subtitle}>
-            {user?.actorID || 'AGRI-TOGO-0045'} · {user?.organization || 'Womé'}
+            {user?.actorID || "AGRI-TOGO-0045"} · {user?.organization || "Womé"}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => navigate('Profile')}>
+        <TouchableOpacity onPress={() => navigate("Profile")}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>
-              {user?.name ? user.name.charAt(0).toUpperCase() : 'K'}
-              {user?.name ? user.name.split(' ')[1]?.charAt(0).toUpperCase() || '' : 'M'}
+              {(user?.name || "KM").substring(0, 2).toUpperCase()}
             </Text>
           </View>
         </TouchableOpacity>
@@ -68,13 +87,21 @@ export default function HomeScreen({ navigation }: any) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* Stats */}
         <StatsCard stats={stats} />
 
+        {/* Section titre */}
         <Text style={styles.sectionTitle}>Mes lots récents</Text>
 
+        {/* Loading */}
         {loading ? (
-          <ActivityIndicator color={Colors.accentWarm} style={{ marginTop: 20 }} />
+          <ActivityIndicator
+            color={Colors.accentWarm}
+            size="large"
+            style={{ marginTop: 40 }}
+          />
         ) : lots.length === 0 ? (
+          /* État vide */
           <View style={styles.emptyState}>
             <Text style={styles.emptyIcon}>🌱</Text>
             <Text style={styles.emptyText}>Aucun lot pour le moment</Text>
@@ -83,31 +110,34 @@ export default function HomeScreen({ navigation }: any) {
             </Text>
           </View>
         ) : (
-          lots.map((lot) => (
+          /* Liste des lots */
+          lots.map((lot, index) => (
             <LotCard
-              key={lot.id}
+              key={lot.id || index}
               lot={lot}
-              onPress={() => navigate('LotDetail', { lot })}
+              onPress={() => navigate("LotDetail", { lot })}
             />
           ))
         )}
 
+        {/* Bouton CTA */}
         <TouchableOpacity
           style={styles.ctaButton}
           activeOpacity={0.8}
-          onPress={() => navigate('CreateLot')}
+          onPress={() => navigate("CreateLot")}
         >
           <Text style={styles.ctaText}>+ Enregistrer un nouveau lot</Text>
         </TouchableOpacity>
       </ScrollView>
 
+      {/* Bottom Nav */}
       <BottomNav
         activeTab="home"
         onTabPress={(tab) => {
-          if (tab === 'home') navigate('Home');
-          else if (tab === 'history') navigate('History');
-          else if (tab === 'profile') navigate('Profile');
-          else if (tab === 'plus') navigate('EUDR');
+          if (tab === "home") navigate("Home");
+          else if (tab === "plus") navigate("EUDR");
+          else if (tab === "history") navigate("History");
+          else if (tab === "profile") navigate("Profile");
         }}
       />
     </View>
@@ -121,9 +151,9 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: Colors.primaryDark,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xxl + Spacing.sm,
     paddingBottom: Spacing.md,
@@ -132,13 +162,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   greeting: {
-    fontFamily: 'serif',
+    fontFamily: "serif",
     fontSize: FontSize.xl,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.white,
   },
   subtitle: {
-    fontFamily: 'System',
+    fontFamily: "System",
     fontSize: FontSize.xs,
     color: Colors.gray,
     marginTop: 2,
@@ -148,13 +178,13 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 21,
     backgroundColor: Colors.accentWarm,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   avatarText: {
-    fontFamily: 'System',
+    fontFamily: "System",
     fontSize: FontSize.md,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.white,
   },
   scroll: {
@@ -165,16 +195,16 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxl,
   },
   sectionTitle: {
-    fontFamily: 'System',
+    fontFamily: "System",
     fontSize: FontSize.sm,
     color: Colors.grayDark,
     opacity: 0.7,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: Spacing.md,
   },
   emptyState: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingVertical: Spacing.xxl,
   },
   emptyIcon: {
@@ -182,13 +212,13 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   emptyText: {
-    fontFamily: 'System',
+    fontFamily: "System",
     fontSize: FontSize.lg,
-    fontWeight: '600',
+    fontWeight: "600",
     color: Colors.primaryDark,
   },
   emptySubtext: {
-    fontFamily: 'System',
+    fontFamily: "System",
     fontSize: FontSize.sm,
     color: Colors.gray,
     marginTop: 4,
@@ -197,15 +227,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.accentWarm,
     borderRadius: BorderRadius.sm,
     paddingVertical: Spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: Spacing.md,
     minHeight: 52,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   ctaText: {
-    fontFamily: 'System',
+    fontFamily: "System",
     fontSize: FontSize.lg,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.white,
   },
 });
