@@ -16,14 +16,25 @@ interface LoginData {
 
 interface AuthResponse {
   actor: {
-    id: string;
-    actorID: string;
-    name: string;
-    role: string;
-    email: string;
-    organization: string;
+    id?: string;
+    actorID?: string;
+    name?: string;
+    role?: string;
+    email?: string;
+    organization?: string;
   };
   token: string;
+}
+
+// Décoder un JWT sans bibliothèque
+function decodeJWT(token: string): any {
+  try {
+    const base64Payload = token.split('.')[1];
+    const payload = atob(base64Payload);
+    return JSON.parse(payload);
+  } catch (e) {
+    return {};
+  }
 }
 
 export const authService = {
@@ -42,3 +53,5 @@ export const authService = {
     return response.data;
   },
 };
+
+export { decodeJWT };

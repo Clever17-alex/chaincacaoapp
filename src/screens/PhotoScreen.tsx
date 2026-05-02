@@ -1,50 +1,136 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { Colors, Spacing, BorderRadius, FontSize } from '../theme/colors';
-import StepIndicator from '../components/StepIndicator';
-import { lotService } from '../services/lotService';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useState, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+} from "react-native";
+import { Colors, Spacing, BorderRadius, FontSize } from "../theme/colors";
+import StepIndicator from "../components/StepIndicator";
+import { lotService } from "../services/lotService";
+import { useAuth } from "../contexts/AuthContext";
+import * as ImagePicker from "expo-image-picker";
+import { CameraView, useCameraPermissions } from "expo-camera";
 
 export default function PhotoScreen({ navigation, route }: any) {
   const { user } = useAuth();
-  const [photoTaken, setPhotoTaken] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<any>(null);
 
-  const handleTakePhoto = () => {
-    setPhotoTaken(true);
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setPhotoUri(result.assets[0].uri);
+      setPhotoBase64(result.assets[0].base64 || null);
+    }
+  };
+
+  const takePhoto = async () => {
+    if (!permission?.granted) {
+      const response = await requestPermission();
+      if (!response.granted) {
+        Alert.alert(
+          "Permission refusée",
+          "La caméra est nécessaire pour photographier vos lots."
+        );
+        return;
+      }
+    }
+    setShowCamera(true);
+  };
+
+  const handleCameraCapture = async () => {
+    if (cameraRef.current) {
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          base64: true,
+          quality: 0.7,
+        });
+        setPhotoUri(photo.uri);
+        setPhotoBase64(photo.base64 || null);
+        setShowCamera(false);
+      } catch (err) {
+        Alert.alert("Erreur", "Impossible de prendre la photo.");
+      }
+    }
   };
 
   const handleRegister = async () => {
     const { lotData } = route.params;
+
+    if (!lotData.weight || lotData.weight <= 0) {
+      Alert.alert("Erreur", "Le poids du lot doit être supérieur à 0");
+      navigation.navigate("CreateLot");
+      return;
+    }
     setLoading(true);
 
     try {
       const lotID = `LOT-${Date.now().toString(36).toUpperCase()}`;
-      const response = await lotService.create({
+
+      // Utiliser la date AUJOURD'HUI au format ISO 8601
+      const harvestDateISO = new Date().toISOString();
+      console.log("Date envoyée:", harvestDateISO);
+
+      const body = {
         lotID,
-        weightKg: lotData.weight,
-        harvestDate: lotData.harvestDate || new Date().toISOString(),
-        region: lotData.cultureMode,
+        farmerID: user?.actorID || "TEST",
+        weightKg: lotData.weight || 0,
+        harvestDate: harvestDateISO,
+        region: lotData.cultureMode || "Agroforesterie",
         latitude: lotData.location?.lat || 6.12345,
         longitude: lotData.location?.lng || 1.23456,
-        ipfsPhotoHash: photoTaken ? 'ipfs://mock-hash-' + Date.now() : undefined,
-      });
+        ipfsPhotoHash: photoBase64
+          ? `ipfs://photo-${Date.now()}`
+          : "ipfs://no-photo",
+        areaHectares: 2.5, // ← AJOUTE CETTE LIGNE
+      };
 
-      navigation.navigate('Success', {
+      console.log("Envoi lot:", JSON.stringify(body, null, 2));
+
+      const response = await lotService.create(body);
+      console.log("Lot créé avec succès:", response);
+
+      navigation.navigate("Success", {
         lot: {
-          id: lotID,
-          fullId: lotID,
-          species: lotData.species,
-          weight: lotData.weight,
-          cultureMode: lotData.cultureMode,
-          harvestDate: lotData.harvestDate,
+          id: response?.lotID || lotID,
+          fullId: response?.lotID || lotID,
+          species: lotData.species || "Cacao",
+          weight: lotData.weight || 0,
+          cultureMode: lotData.cultureMode || "Agroforesterie",
+          harvestDate: new Date().toLocaleDateString("fr-FR"),
           location: lotData.location,
-          status: 'CREATED',
-          createdAt: new Date().toLocaleDateString('fr-FR'),
+          photoUri,
+          status: "CREATED",
+          createdAt: new Date().toLocaleDateString("fr-FR"),
         },
       });
     } catch (err: any) {
-      Alert.alert('Erreur', err.response?.data?.error || "Échec de l'enregistrement");
+      console.log(
+        "Erreur création lot:",
+        JSON.stringify(err.response?.data || err.message)
+      );
+      Alert.alert(
+        "Erreur",
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Échec de l'enregistrement"
+      );
     } finally {
       setLoading(false);
     }
@@ -52,59 +138,102 @@ export default function PhotoScreen({ navigation, route }: any) {
 
   return (
     <View style={styles.container}>
+      {/* Modal caméra */}
+      <Modal visible={showCamera} animationType="slide" style={styles.modal}>
+        <View style={styles.cameraContainer}>
+          <CameraView ref={cameraRef} style={styles.camera} facing="back">
+            <View style={styles.cameraOverlay}>
+              <View style={[styles.corner, styles.topLeft]} />
+              <View style={[styles.corner, styles.topRight]} />
+              <View style={[styles.corner, styles.bottomLeft]} />
+              <View style={[styles.corner, styles.bottomRight]} />
+            </View>
+          </CameraView>
+          <View style={styles.cameraControls}>
+            <TouchableOpacity
+              style={styles.cameraCloseBtn}
+              onPress={() => setShowCamera(false)}
+            >
+              <Text style={styles.cameraCloseText}>✕</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cameraCaptureBtn}
+              onPress={handleCameraCapture}
+            >
+              <View style={styles.cameraCaptureInner} />
+            </TouchableOpacity>
+            <View style={{ width: 50 }} />
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+        >
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Photo du lot</Text>
         <View style={styles.backBtn} />
       </View>
 
-      <StepIndicator currentStep={3} totalSteps={3} labels={['Infos', 'Localisation', 'Photo']} />
+      <StepIndicator
+        currentStep={3}
+        totalSteps={3}
+        labels={["Infos", "Localisation", "Photo"]}
+      />
 
       <View style={styles.content}>
         <View style={styles.viewfinder}>
-          <View style={[styles.corner, styles.topLeft]} />
-          <View style={[styles.corner, styles.topRight]} />
-          <View style={[styles.corner, styles.bottomLeft]} />
-          <View style={[styles.corner, styles.bottomRight]} />
-
-          {!photoTaken ? (
-            <Text style={styles.viewfinderText}>Photographiez votre lot de cacao</Text>
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} style={styles.previewImage} />
           ) : (
-            <View style={styles.photoPreview}>
-              <Text style={styles.photoEmoji}>🫘</Text>
-              <Text style={styles.photoLabel}>Photo capturée</Text>
-            </View>
-          )}
-
-          {photoTaken && (
-            <View style={styles.thumbnailPreview}>
-              <Text style={styles.thumbnailEmoji}>🫘</Text>
-            </View>
+            <>
+              <View style={[styles.cornerStatic, styles.topLeftStatic]} />
+              <View style={[styles.cornerStatic, styles.topRightStatic]} />
+              <View style={[styles.cornerStatic, styles.bottomLeftStatic]} />
+              <View style={[styles.cornerStatic, styles.bottomRightStatic]} />
+              <Text style={styles.viewfinderText}>
+                Photographiez votre lot de cacao
+              </Text>
+            </>
           )}
         </View>
 
-        <TouchableOpacity
-          style={[styles.captureBtn, photoTaken && styles.captureBtnDone]}
-          activeOpacity={0.8}
-          onPress={handleTakePhoto}
-        >
-          <Text style={styles.captureBtnText}>
-            {photoTaken ? '📸 Reprendre la photo' : '📸 Prendre la photo'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.photoButtons}>
+          <TouchableOpacity
+            style={styles.photoBtn}
+            activeOpacity={0.8}
+            onPress={takePhoto}
+          >
+            <Text style={styles.photoBtnText}>📸 Prendre une photo</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.galleryBtn}
+            activeOpacity={0.8}
+            onPress={pickImage}
+          >
+            <Text style={styles.galleryBtnText}>🖼️ Galerie</Text>
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
-          style={[styles.registerBtn, (!photoTaken || loading) && styles.registerBtnDisabled]}
+          style={[
+            styles.registerBtn,
+            (!photoUri || loading) && styles.registerBtnDisabled,
+          ]}
           activeOpacity={0.8}
           onPress={handleRegister}
-          disabled={!photoTaken || loading}
+          disabled={!photoUri || loading}
         >
           {loading ? (
             <ActivityIndicator color={Colors.lightNeutral} />
           ) : (
-            <Text style={styles.registerBtnText}>Enregistrer sur la blockchain →</Text>
+            <Text style={styles.registerBtnText}>
+              Enregistrer sur la blockchain →
+            </Text>
           )}
         </TouchableOpacity>
       </View>
@@ -112,18 +241,68 @@ export default function PhotoScreen({ navigation, route }: any) {
   );
 }
 
-// ... styles (identiques à l'ancien fichier) ...
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1, backgroundColor: Colors.darkBase },
+  modal: { flex: 1 },
+  cameraContainer: { flex: 1, backgroundColor: Colors.black },
+  camera: { flex: 1 },
+  cameraOverlay: { flex: 1, justifyContent: "center", alignItems: "center" },
+  cameraControls: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    paddingVertical: Spacing.lg,
     backgroundColor: Colors.darkBase,
+  },
+  cameraCloseBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cameraCloseText: { fontSize: 20, color: Colors.white },
+  cameraCaptureBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderWidth: 4,
+    borderColor: Colors.accentWarm,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cameraCaptureInner: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.white,
+  },
+  corner: {
+    position: "absolute",
+    width: 30,
+    height: 30,
+    borderColor: Colors.accentWarm,
+  },
+  topLeft: { top: 60, left: 30, borderTopWidth: 3, borderLeftWidth: 3 },
+  topRight: { top: 60, right: 30, borderTopWidth: 3, borderRightWidth: 3 },
+  bottomLeft: {
+    bottom: 60,
+    left: 30,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+  },
+  bottomRight: {
+    bottom: 60,
+    right: 30,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
   },
   header: {
     backgroundColor: Colors.primaryDark,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xxl + Spacing.sm,
     paddingBottom: Spacing.md,
@@ -131,132 +310,116 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
-  backArrow: {
-    fontSize: FontSize.xl,
-    color: Colors.white,
-  },
+  backArrow: { fontSize: FontSize.xl, color: Colors.white },
   headerTitle: {
-    fontFamily: 'serif',
+    fontFamily: "serif",
     fontSize: FontSize.lg,
-    fontWeight: '700',
+    fontWeight: "700",
     color: Colors.white,
   },
-  content: {
-    flex: 1,
-    padding: Spacing.lg,
-    justifyContent: 'center',
-  },
+  content: { flex: 1, padding: Spacing.lg, justifyContent: "center" },
   viewfinder: {
     backgroundColor: Colors.primaryDark,
     borderRadius: BorderRadius.md,
-    height: 320,
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 300,
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: Spacing.lg,
-    position: 'relative',
-    overflow: 'hidden',
+    overflow: "hidden",
   },
-  corner: {
-    position: 'absolute',
+  cornerStatic: {
+    position: "absolute",
     width: 30,
     height: 30,
     borderColor: Colors.accentWarm,
   },
-  topLeft: {
+  topLeftStatic: {
     top: Spacing.md,
     left: Spacing.md,
     borderTopWidth: 3,
     borderLeftWidth: 3,
   },
-  topRight: {
+  topRightStatic: {
     top: Spacing.md,
     right: Spacing.md,
     borderTopWidth: 3,
     borderRightWidth: 3,
   },
-  bottomLeft: {
+  bottomLeftStatic: {
     bottom: Spacing.md,
     left: Spacing.md,
     borderBottomWidth: 3,
     borderLeftWidth: 3,
   },
-  bottomRight: {
+  bottomRightStatic: {
     bottom: Spacing.md,
     right: Spacing.md,
     borderBottomWidth: 3,
     borderRightWidth: 3,
   },
   viewfinderText: {
-    fontFamily: 'System',
+    fontFamily: "System",
     fontSize: FontSize.md,
     color: Colors.lightNeutral,
     opacity: 0.5,
-    textAlign: 'center',
+    textAlign: "center",
   },
-  photoPreview: {
-    alignItems: 'center',
+  previewImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: BorderRadius.md,
   },
-  photoEmoji: {
-    fontSize: 64,
+  photoButtons: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
   },
-  photoLabel: {
-    fontFamily: 'System',
-    fontSize: FontSize.sm,
-    color: Colors.forestGreen,
-    fontWeight: '600',
-    marginTop: Spacing.sm,
-  },
-  thumbnailPreview: {
-    position: 'absolute',
-    bottom: Spacing.md,
-    left: Spacing.md,
-    width: 50,
-    height: 50,
-    borderRadius: BorderRadius.sm,
-    backgroundColor: Colors.darkBase,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.accentWarm,
-  },
-  thumbnailEmoji: {
-    fontSize: 24,
-  },
-  captureBtn: {
+  photoBtn: {
+    flex: 1,
     backgroundColor: Colors.accentWarm,
     borderRadius: BorderRadius.sm,
     paddingVertical: Spacing.md,
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-    minHeight: 52,
-    justifyContent: 'center',
+    alignItems: "center",
+    minHeight: 48,
+    justifyContent: "center",
   },
-  captureBtnDone: {
-    opacity: 0.7,
-  },
-  captureBtnText: {
-    fontFamily: 'System',
-    fontSize: FontSize.lg,
-    fontWeight: '700',
+  photoBtnText: {
+    fontFamily: "System",
+    fontSize: FontSize.md,
+    fontWeight: "700",
     color: Colors.white,
+  },
+  galleryBtn: {
+    flex: 1,
+    borderWidth: 2,
+    borderColor: Colors.accentWarm,
+    borderRadius: BorderRadius.sm,
+    paddingVertical: Spacing.md,
+    alignItems: "center",
+    minHeight: 48,
+    justifyContent: "center",
+  },
+  galleryBtnText: {
+    fontFamily: "System",
+    fontSize: FontSize.md,
+    fontWeight: "600",
+    color: Colors.accentWarm,
   },
   registerBtn: {
     borderRadius: BorderRadius.sm,
     paddingVertical: Spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     minHeight: 48,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
-  registerBtnDisabled: {
-    opacity: 0.3,
-  },
+  registerBtnDisabled: { opacity: 0.3 },
   registerBtnText: {
-    fontFamily: 'System',
+    fontFamily: "System",
     fontSize: FontSize.md,
     color: Colors.lightNeutral,
-    opacity: 0.5,
+    opacity: 0.7,
   },
 });

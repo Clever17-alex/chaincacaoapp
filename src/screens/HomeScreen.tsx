@@ -105,9 +105,9 @@ export default function HomeScreen({ navigation }: any) {
         activeTab="home"
         onTabPress={(tab) => {
           if (tab === 'home') navigate('Home');
-          else if (tab === 'plus') navigate('CreateLot');
           else if (tab === 'history') navigate('History');
           else if (tab === 'profile') navigate('Profile');
+          else if (tab === 'plus') navigate('EUDR');
         }}
       />
     </View>

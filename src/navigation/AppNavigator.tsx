@@ -1,19 +1,26 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, StyleSheet, BackHandler, Animated, ActivityIndicator } from 'react-native';
-import { Colors } from '../theme/colors';
-import { AuthProvider, useAuth } from '../contexts/AuthContext';
-import SplashScreen from '../screens/SplashScreen';
-import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
-import HomeScreen from '../screens/HomeScreen';
-import CreateLotScreen from '../screens/CreateLotScreen';
-import GPSScreen from '../screens/GPSScreen';
-import PhotoScreen from '../screens/PhotoScreen';
-import SuccessScreen from '../screens/SuccessScreen';
-import LotDetailScreen from '../screens/LotDetailScreen';
-import NotificationsScreen from '../screens/NotificationsScreen';
-import HistoryScreen from '../screens/HistoryScreen';
-import ProfileScreen from '../screens/ProfileScreen';
+import React, { useState, useCallback, useEffect, useRef } from "react";
+import {
+  View,
+  StyleSheet,
+  BackHandler,
+  Animated,
+  ActivityIndicator,
+} from "react-native";
+import { Colors } from "../theme/colors";
+import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import SplashScreen from "../screens/SplashScreen";
+import LoginScreen from "../screens/LoginScreen";
+import RegisterScreen from "../screens/RegisterScreen";
+import HomeScreen from "../screens/HomeScreen";
+import CreateLotScreen from "../screens/CreateLotScreen";
+import GPSScreen from "../screens/GPSScreen";
+import PhotoScreen from "../screens/PhotoScreen";
+import SuccessScreen from "../screens/SuccessScreen";
+import LotDetailScreen from "../screens/LotDetailScreen";
+import NotificationsScreen from "../screens/NotificationsScreen";
+import HistoryScreen from "../screens/HistoryScreen";
+import ProfileScreen from "../screens/ProfileScreen";
+import EUDRScreen from "../screens/EUDRScreen";
 
 export interface NavParams {
   lot?: any;
@@ -32,31 +39,34 @@ export const NavContext = React.createContext<{
 }>({
   navigate: () => {},
   goBack: () => {},
-  currentRoute: 'Splash',
+  currentRoute: "Splash",
 });
 
-const DARK_SCREENS = ['Splash', 'Login', 'Register', 'Photo', 'Success'];
+const DARK_SCREENS = ["Splash", "Login", "Register", "Photo", "Success"];
 
 function NavigatorContent() {
   const { isLoading, isAuthenticated } = useAuth();
-  const [stack, setStack] = useState<Route[]>([{ name: 'Splash' }]);
+  const [stack, setStack] = useState<Route[]>([{ name: "Splash" }]);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (stack.length > 1) {
-        animateTransition('back');
-        return true;
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        if (stack.length > 1) {
+          animateTransition("back");
+          return true;
+        }
+        return false;
       }
-      return false;
-    });
+    );
     return () => backHandler.remove();
   }, [stack.length]);
 
-  const animateTransition = (direction: 'forward' | 'back' = 'forward') => {
+  const animateTransition = (direction: "forward" | "back" = "forward") => {
     fadeAnim.setValue(0);
-    slideAnim.setValue(direction === 'forward' ? 30 : -30);
+    slideAnim.setValue(direction === "forward" ? 30 : -30);
 
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -73,17 +83,17 @@ function NavigatorContent() {
   };
 
   const navigate = useCallback((name: string, params?: NavParams) => {
-    animateTransition('forward');
+    animateTransition("forward");
     setStack((prev) => {
-      if (name === 'Home') {
-        return [{ name: 'Home', params }];
+      if (name === "Home") {
+        return [{ name: "Home", params }];
       }
       return [...prev, { name, params }];
     });
   }, []);
 
   const goBack = useCallback(() => {
-    animateTransition('back');
+    animateTransition("back");
     setStack((prev) => {
       if (prev.length <= 1) return prev;
       return prev.slice(0, -1);
@@ -96,7 +106,16 @@ function NavigatorContent() {
   // Loading screen
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: Colors.darkBase, justifyContent: 'center', alignItems: 'center' }]}>
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: Colors.darkBase,
+            justifyContent: "center",
+            alignItems: "center",
+          },
+        ]}
+      >
         <ActivityIndicator size="large" color={Colors.accentWarm} />
       </View>
     );
@@ -109,38 +128,47 @@ function NavigatorContent() {
     };
 
     switch (currentRoute.name) {
-      case 'Splash':
+      case "Splash":
         return <SplashScreen {...props} />;
-      case 'Login':
+      case "Login":
         return <LoginScreen {...props} />;
-      case 'Register':
+      case "Register":
         return <RegisterScreen {...props} />;
-      case 'Home':
+      case "Home":
         return <HomeScreen {...props} />;
-      case 'CreateLot':
+      case "CreateLot":
         return <CreateLotScreen {...props} />;
-      case 'GPS':
+      case "GPS":
         return <GPSScreen {...props} />;
-      case 'Photo':
+      case "Photo":
         return <PhotoScreen {...props} />;
-      case 'Success':
+      case "Success":
         return <SuccessScreen {...props} />;
-      case 'LotDetail':
+      case "LotDetail":
         return <LotDetailScreen {...props} />;
-      case 'Notifications':
+      case "Notifications":
         return <NotificationsScreen {...props} />;
-      case 'History':
+      case "History":
         return <HistoryScreen {...props} />;
-      case 'Profile':
+      case "Profile":
         return <ProfileScreen {...props} />;
+      case "EUDR":
+        return <EUDRScreen {...props} />;
       default:
         return <SplashScreen {...props} />;
     }
   };
 
   return (
-    <NavContext.Provider value={{ navigate, goBack, currentRoute: currentRoute.name }}>
-      <View style={[styles.container, { backgroundColor: isDark ? Colors.darkBase : Colors.lightNeutral }]}>
+    <NavContext.Provider
+      value={{ navigate, goBack, currentRoute: currentRoute.name }}
+    >
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: isDark ? Colors.darkBase : Colors.lightNeutral },
+        ]}
+      >
         <Animated.View
           style={[
             styles.animatedScreen,

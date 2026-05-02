@@ -1,30 +1,60 @@
 {
   "expo": {
-    "name": "chaincacaoapp",
+    "name": "ChainCacao",
     "slug": "chaincacaoapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0E0D0B"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "ChainCacao a besoin de votre caméra pour photographier vos lots de cacao.",
+        "NSPhotoLibraryUsageDescription": "ChainCacao a besoin d'accéder à vos photos pour documenter vos lots.",
+        "NSLocationWhenInUseUsageDescription": "ChainCacao a besoin de votre position GPS pour la traçabilité EUDR de vos lots de cacao."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0E0D0B"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permettre à ChainCacao d'accéder à votre caméra pour photographier vos lots de cacao."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permettre à ChainCacao d'accéder à vos photos pour documenter vos lots."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permettre à ChainCacao d'accéder à votre position GPS pour la traçabilité EUDR."
+        }
+      ]
+    ]
   }
 }

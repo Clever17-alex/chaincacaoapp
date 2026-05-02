@@ -1,3 +1,4 @@
+import { Alert } from 'react-native';
 import React, { useState } from 'react';
 import {
   View,
@@ -24,11 +25,21 @@ export default function CreateLotScreen({ navigation }: any) {
   const [showModeDropdown, setShowModeDropdown] = useState(false);
 
   const handleNext = () => {
-    const weightNum = parseInt(weight.replace(/\s/g, ''), 10) || 0;
-    navigation.navigate('GPS', {
-      lotData: { species, weight: weightNum, cultureMode, harvestDate, note },
-    });
-  };
+  const weightNum = parseInt(weight.replace(/\s/g, ''), 10) || 0;
+  if (weightNum <= 0) {
+    Alert.alert('Erreur', 'Veuillez entrer un poids valide');
+    return;
+  }
+  navigation.navigate('GPS', {
+    lotData: { 
+      species, 
+      weight: weightNum, 
+      cultureMode, 
+      harvestDate, 
+      note 
+    },
+  });
+};
 
   return (
     <View style={styles.container}>
