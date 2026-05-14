@@ -1,241 +1,400 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  StatusBar,
-  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { Colors, Spacing, BorderRadius, FontSize } from "../theme/colors";
-import StatsCard from "../components/StatsCard";
-import LotCard from "../components/LotCard";
-import BottomNav from "../components/BottomNav";
+import BottomNav from "./BottomNav";
 import { useAuth } from "../contexts/AuthContext";
 import { lotService } from "../services/lotService";
-import { MOCK_LOTS } from "../data/mockData";
+import { alerteService } from "../services/alerteService";
 
-export default function HomeScreen({ navigation }: any) {
-  const { navigate } = navigation;
+export default function HomeScreen({ navigation, currentRoute }: any) {
   const { user } = useAuth();
   const [lots, setLots] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [alertCount, setAlertCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Recharger les lots chaque fois que l'écran est affiché
-  useEffect(
-    useCallback(() => {
-      loadLots();
-    }, [])
-  );
+  const activeTab =
+    currentRoute === "Home"
+      ? "home"
+      : currentRoute === "Lots"
+        ? "lots"
+        : currentRoute === "Alerts"
+          ? "alerts"
+          : "profile";
 
-  const loadLots = async () => {
-    setLoading(true);
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
     try {
-      // Essayer de charger depuis l'API
-      // Pour l'instant on utilise les données mock
-      // TODO: remplacer par const data = await lotService.getAll();
-      setLots(MOCK_LOTS);
-    } catch (err) {
-      console.log("Erreur chargement lots, utilisation mock");
-      setLots(MOCK_LOTS);
-    } finally {
-      setLoading(false);
-    }
+      const [lotsData, alertesData] = await Promise.all([
+        lotService.getAll(),
+        alerteService.getAll(),
+      ]);
+      setLots(lotsData || []);
+      setAlertCount(
+        alertesData?.filter((a: any) => a.status === "active")?.length || 0,
+      );
+    } catch (e) {}
+  };
+
+  const handleTabPress = (tab: string) => {
+    if (tab === "home") return;
+    if (tab === "lots") navigation.navigate("Lots");
+    else if (tab === "alerts") navigation.navigate("Alerts");
+    else if (tab === "profile") navigation.navigate("Profile");
   };
 
   const activeLots = lots.filter(
-    (l) => l.status === "CREATED" || l.status === "PROCESSING"
+    (l: any) => l.statut === "recu" || l.statut === "en_transfert",
   ).length;
-  const inTransit = lots.filter((l) => l.status === "EXPORTED").length;
-  const exported = lots.filter(
-    (l) => l.status === "DELIVERED" || l.status === "EUDR_STATEMENT"
+  const transitLots = lots.filter(
+    (l: any) => l.statut === "en_transfert",
   ).length;
-
-  const stats = [
-    { value: `${activeLots}`, label: "Lots actifs" },
-    { value: `${inTransit}`, label: "En transit" },
-    { value: `${exported}`, label: "Exportés" },
-  ];
+  const exportLots = lots.filter((l: any) => l.statut === "exporte").length;
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor={Colors.primaryDark}
-      />
-
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>Bonjour, {user?.name || "Kofi"}</Text>
-          <Text style={styles.subtitle}>
-            {user?.actorID || "AGRI-TOGO-0045"} · {user?.organization || "Womé"}
+          <Text style={styles.greeting}>
+            Bonjour, {user?.name?.split(" ")[0] || "Producteur"}
+          </Text>
+          <Text style={styles.headerSub}>
+            {user?.organisation || "Coopérative"} · {user?.region || "Togo"}
           </Text>
         </View>
-        <TouchableOpacity onPress={() => navigate("Profile")}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(user?.name || "KM").substring(0, 2).toUpperCase()}
-            </Text>
-          </View>
+        <TouchableOpacity
+          style={styles.avatarBtn}
+          onPress={() => navigation.navigate("Profile")}
+        >
+          <Text style={styles.avatarText}>
+            {(user?.name || "CC").slice(0, 2).toUpperCase()}
+          </Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Stats */}
-        <StatsCard stats={stats} />
-
-        {/* Section titre */}
-        <Text style={styles.sectionTitle}>Mes lots récents</Text>
-
-        {/* Loading */}
-        {loading ? (
-          <ActivityIndicator
-            color={Colors.accentWarm}
-            size="large"
-            style={{ marginTop: 40 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={async () => {
+              setRefreshing(true);
+              await loadData();
+              setRefreshing(false);
+            }}
+            tintColor={Colors.accent}
           />
-        ) : lots.length === 0 ? (
-          /* État vide */
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🌱</Text>
-            <Text style={styles.emptyText}>Aucun lot pour le moment</Text>
-            <Text style={styles.emptySubtext}>
-              Enregistrez votre première récolte
-            </Text>
+        }
+      >
+        {/* Carte CTA principale */}
+        <TouchableOpacity
+          style={styles.ctaCard}
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate("NewLot")}
+        >
+          <View style={styles.ctaIconCircle}>
+            <Text style={styles.ctaIcon}>+</Text>
           </View>
-        ) : (
-          /* Liste des lots */
-          lots.map((lot, index) => (
-            <LotCard
-              key={lot.id || index}
-              lot={lot}
-              onPress={() => navigate("LotDetail", { lot })}
-            />
-          ))
+          <View style={styles.ctaContent}>
+            <Text style={styles.ctaTitle}>Enregistrer un nouveau lot</Text>
+            <Text style={styles.ctaSub}>Photo · GPS · Blockchain EUDR</Text>
+          </View>
+          <Text style={styles.ctaArrow}>→</Text>
+        </TouchableOpacity>
+
+        {/* Statistiques */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNum}>{lots.length}</Text>
+            <Text style={styles.statLabel}>Lots</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={[styles.statNum, { color: Colors.warning }]}>
+              {transitLots}
+            </Text>
+            <Text style={styles.statLabel}>En transit</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={[styles.statNum, { color: Colors.success }]}>
+              {exportLots}
+            </Text>
+            <Text style={styles.statLabel}>Exportés</Text>
+          </View>
+        </View>
+
+        {/* Alerte banner */}
+        {alertCount > 0 && (
+          <TouchableOpacity
+            style={styles.alertBanner}
+            onPress={() => navigation.navigate("Alerts")}
+          >
+            <Text style={styles.alertDot}>●</Text>
+            <Text style={styles.alertText}>
+              {alertCount} alerte{alertCount > 1 ? "s" : ""} active
+              {alertCount > 1 ? "s" : ""}
+            </Text>
+            <Text style={styles.alertArrow}>→</Text>
+          </TouchableOpacity>
         )}
 
-        {/* Bouton CTA */}
-        <TouchableOpacity
-          style={styles.ctaButton}
-          activeOpacity={0.8}
-          onPress={() => navigate("CreateLot")}
-        >
-          <Text style={styles.ctaText}>+ Enregistrer un nouveau lot</Text>
-        </TouchableOpacity>
+        {/* Lots récents */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Lots récents</Text>
+          {lots.length > 0 && (
+            <TouchableOpacity onPress={() => navigation.navigate("Lots")}>
+              <Text style={styles.seeAll}>Tout voir</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {lots.length === 0 ? (
+          <View style={styles.emptyState}>
+            <View style={styles.emptyCircle}>
+              <Text style={styles.emptyIcon}>+</Text>
+            </View>
+            <Text style={styles.emptyTitle}>Aucun lot</Text>
+            <Text style={styles.emptySub}>Créez votre premier lot</Text>
+          </View>
+        ) : (
+          lots.slice(0, 5).map((lot: any) => (
+            <TouchableOpacity
+              key={lot.id}
+              style={styles.lotCard}
+              onPress={() => navigation.navigate("LotDetail", { lot })}
+              activeOpacity={0.7}
+            >
+              <View style={styles.lotCardLeft}>
+                <Text style={styles.lotId}>#{lot.id?.slice(0, 8)}</Text>
+                <Text style={styles.lotName}>{lot.producteurName}</Text>
+                <Text style={styles.lotDetail}>
+                  {lot.poidsRecu} kg · {lot.espece}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.lotStatus,
+                  { backgroundColor: getStatusColor(lot.statut) + "25" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.lotStatusText,
+                    { color: getStatusColor(lot.statut) },
+                  ]}
+                >
+                  {getStatusLabel(lot.statut)}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </ScrollView>
 
-      {/* Bottom Nav */}
       <BottomNav
-        activeTab="home"
-        onTabPress={(tab) => {
-          if (tab === "home") navigate("Home");
-          else if (tab === "plus") navigate("EUDR");
-          else if (tab === "history") navigate("History");
-          else if (tab === "profile") navigate("Profile");
-        }}
+        activeTab={activeTab}
+        onTabPress={handleTabPress}
+        alertCount={alertCount}
       />
     </View>
   );
 }
 
+function getStatusLabel(s: string) {
+  return (
+    {
+      recu: "Reçu",
+      en_transfert: "En transit",
+      traite: "Traité",
+      exporte: "Exporté",
+    }[s] || s
+  );
+}
+function getStatusColor(s: string) {
+  return (
+    {
+      recu: Colors.info,
+      en_transfert: Colors.warning,
+      traite: Colors.accent,
+      exporte: Colors.success,
+    }[s] || Colors.textMuted
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.lightNeutral,
-  },
+  container: { flex: 1, backgroundColor: Colors.dark },
   header: {
-    backgroundColor: Colors.primaryDark,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xxl + Spacing.sm,
-    paddingBottom: Spacing.md,
+    paddingBottom: Spacing.lg,
   },
-  headerLeft: {
-    flex: 1,
-  },
+  headerLeft: { flex: 1 },
   greeting: {
     fontFamily: "serif",
-    fontSize: FontSize.xl,
+    fontSize: FontSize.xxl,
     fontWeight: "700",
-    color: Colors.white,
+    color: Colors.textPrimary,
   },
-  subtitle: {
-    fontFamily: "System",
-    fontSize: FontSize.xs,
-    color: Colors.gray,
+  headerSub: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
     marginTop: 2,
   },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: Colors.accentWarm,
+  avatarBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: Colors.accent,
     justifyContent: "center",
     alignItems: "center",
   },
-  avatarText: {
-    fontFamily: "System",
-    fontSize: FontSize.md,
-    fontWeight: "700",
-    color: Colors.white,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
+  avatarText: { fontSize: FontSize.md, fontWeight: "700", color: Colors.dark },
+  scroll: { flex: 1 },
+  scrollContent: { padding: Spacing.lg },
+  ctaCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.darkCard,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
-    paddingBottom: Spacing.xxl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.lg,
+    gap: Spacing.md,
+  },
+  ctaIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Colors.accent,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  ctaIcon: { fontSize: 26, color: Colors.dark, fontWeight: "400" },
+  ctaContent: { flex: 1 },
+  ctaTitle: {
+    fontFamily: "serif",
+    fontSize: FontSize.lg,
+    fontWeight: "700",
+    color: Colors.textPrimary,
+  },
+  ctaSub: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
+  ctaArrow: { fontSize: 20, color: Colors.accent },
+  statsRow: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.lg },
+  statCard: {
+    flex: 1,
+    backgroundColor: Colors.darkCard,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  statNum: {
+    fontFamily: "serif",
+    fontSize: FontSize.xxl,
+    fontWeight: "700",
+    color: Colors.accent,
+  },
+  statLabel: { fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  alertBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.warningBg,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.warning + "30",
+  },
+  alertDot: { color: Colors.warning, fontSize: 10, marginRight: Spacing.sm },
+  alertText: {
+    flex: 1,
+    fontSize: FontSize.md,
+    fontWeight: "600",
+    color: Colors.warning,
+  },
+  alertArrow: { color: Colors.warning, fontSize: 16 },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
   },
   sectionTitle: {
-    fontFamily: "System",
-    fontSize: FontSize.sm,
-    color: Colors.grayDark,
-    opacity: 0.7,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: Spacing.md,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: Spacing.xxl,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: Spacing.md,
-  },
-  emptyText: {
-    fontFamily: "System",
-    fontSize: FontSize.lg,
-    fontWeight: "600",
-    color: Colors.primaryDark,
-  },
-  emptySubtext: {
-    fontFamily: "System",
-    fontSize: FontSize.sm,
-    color: Colors.gray,
-    marginTop: 4,
-  },
-  ctaButton: {
-    backgroundColor: Colors.accentWarm,
-    borderRadius: BorderRadius.sm,
-    paddingVertical: Spacing.md,
-    alignItems: "center",
-    marginTop: Spacing.md,
-    minHeight: 52,
-    justifyContent: "center",
-  },
-  ctaText: {
-    fontFamily: "System",
+    fontFamily: "serif",
     fontSize: FontSize.lg,
     fontWeight: "700",
-    color: Colors.white,
+    color: Colors.textPrimary,
+  },
+  seeAll: { fontSize: FontSize.sm, color: Colors.accent, fontWeight: "600" },
+  lotCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.darkCard,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  lotCardLeft: { flex: 1 },
+  lotId: {
+    fontFamily: "monospace",
+    fontSize: FontSize.xs,
+    color: Colors.textMuted,
+    marginBottom: 2,
+  },
+  lotName: {
+    fontSize: FontSize.md,
+    fontWeight: "600",
+    color: Colors.textPrimary,
+  },
+  lotDetail: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    marginTop: 2,
+  },
+  lotStatus: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
+  lotStatusText: { fontSize: FontSize.xs, fontWeight: "600" },
+  emptyState: { alignItems: "center", paddingVertical: Spacing.xxl },
+  emptyCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.darkCard,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.md,
+  },
+  emptyIcon: { fontSize: 24, color: Colors.textMuted },
+  emptyTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: "600",
+    color: Colors.textPrimary,
+  },
+  emptySub: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    marginTop: Spacing.xs,
   },
 });

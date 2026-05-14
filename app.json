@@ -14,6 +14,9 @@
     },
     "ios": {
       "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyAlaPjW63A0vnVUui2YUfePc_jrtuiYabw"
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "ChainCacao a besoin de votre caméra pour photographier vos lots de cacao.",
         "NSPhotoLibraryUsageDescription": "ChainCacao a besoin d'accéder à vos photos pour documenter vos lots.",
@@ -26,12 +29,19 @@
         "backgroundColor": "#0E0D0B"
       },
       "edgeToEdgeEnabled": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAlaPjW63A0vnVUui2YUfePc_jrtuiYabw"
+        }
+      },
       "permissions": [
-        "CAMERA",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "READ_EXTERNAL_STORAGE"
-      ]
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.alexisclever.chaincacaoapp"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -51,10 +61,16 @@
       ],
       [
         "expo-location",
+
         {
           "locationAlwaysAndWhenInUsePermission": "Permettre à ChainCacao d'accéder à votre position GPS pour la traçabilité EUDR."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "4c8d75ab-59fd-4182-89d9-880ca206d756"
+      }
+    }
   }
 }

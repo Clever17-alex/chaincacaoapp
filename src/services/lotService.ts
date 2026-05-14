@@ -1,38 +1,40 @@
 import api from './api';
 
-interface CreateLotData {
-  lotID: string;
-  weightKg: number;
-  harvestDate: string;
-  region: string;
-  latitude: number;
-  longitude: number;
-  ipfsPhotoHash?: string;
-}
-
 export const lotService = {
-  async create(data: CreateLotData): Promise<any> {
-    const response = await api.post('/api/v1/lots', data);
-    return response.data;
+  async create(data: { producteurName: string; espece: string; poidsRecu: number; region: string; certification?: string; producteurId?: string }) {
+    const { data: response } = await api.post('/lots', data);
+    return response;
   },
-
-  async getById(lotId: string): Promise<any> {
-    const response = await api.get(`/api/v1/lots/${lotId}`);
-    return response.data;
+  async getAll() {
+    const { data } = await api.get('/lots');
+    return data;
   },
-
-  async verify(lotId: string): Promise<any> {
-    const response = await api.get(`/api/v1/verify/${lotId}`);
-    return response.data;
+  async getById(id: string) {
+    const { data } = await api.get(`/lots/${id}`);
+    return data;
   },
-
-  async getQRCode(lotId: string): Promise<{ lotId: string; qrCode: string; verifyUrl: string; timestamp: string }> {
-    const response = await api.get(`/api/v1/qr/${lotId}`);
-    return response.data;
+  async getHistory(id: string) {
+    const { data } = await api.get(`/lots/${id}/history`);
+    return data;
   },
-
-  async generateEUDR(lotCode: string, latitude: number, longitude: number): Promise<any> {
-    const response = await api.post('/api/v1/eudr', { lotCode, latitude, longitude });
-    return response.data;
+  async updateStatus(id: string, statut: string) {
+    const { data } = await api.patch(`/lots/${id}/statut`, { statut });
+    return data;
+  },
+  async getByProducteur(producteurId: string) {
+    const { data } = await api.get(`/lots/producteur/${producteurId}`);
+    return data;
+  },
+  async getByRegion(region: string) {
+    const { data } = await api.get(`/lots/region/${region}`);
+    return data;
+  },
+  async getByStatus(status: string) {
+    const { data } = await api.get(`/lots/status/${status}`);
+    return data;
+  },
+  async getQRCode(id: string) {
+    const { data } = await api.get(`/lots/${id}/qr`);
+    return data;
   },
 };

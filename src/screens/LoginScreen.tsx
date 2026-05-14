@@ -1,64 +1,65 @@
-import Logo from "../components/Logo";
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-} from "react-native";
-import { Colors, Spacing, BorderRadius, FontSize } from "../theme/colors";
-import { useAuth } from "../contexts/AuthContext";
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image, TouchableOpacity } from 'react-native';
+import { Colors, Spacing, FontSize, BorderRadius } from '../theme/colors';
+import Button from '../components/Button';
+import Input from '../components/Input';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginScreen({ navigation }: any) {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      setError("Veuillez remplir tous les champs");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-
+    if (!email || !password) { setError('Tous les champs sont requis'); return; }
+    setLoading(true); setError('');
     try {
       await login(email, password);
-      navigation.navigate("Home");
+      navigation.navigate('Home');
     } catch (err: any) {
-      const message =
-        err.response?.data?.error ||
-        "Erreur de connexion. Vérifiez vos identifiants.";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
+      setError(err.response?.data?.error || 'Email ou mot de passe incorrect');
+    } finally { setLoading(false); }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.logoArea}>
-          <Logo size={70} showText={true} showTagline={true} />
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {/* Logo */}
+        <View style={styles.logoSection}>
+          <View style={styles.logoRing}>
+            <Image source={require('../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+          </View>
+          <Text style={styles.appName}>ChainCacao</Text>
+          <Text style={styles.tagline}>Traçabilité blockchain du cacao togolais</Text>
         </View>
 
-        <View style={styles.form}>
-          <Text style={styles.formTitle}>Se connecter</Text>
+        {/* Formulaire */}
+        <View style={styles.formCard}>
+          <Text style={styles.formTitle}>Connexion</Text>
+          
+          <Input 
+            label="Email" 
+            value={email} 
+            onChangeText={(t) => { setEmail(t); setError(''); }} 
+            placeholder="votre@email.com" 
+            keyboardType="email-address" 
+            autoCapitalize="none"
+            dark 
+          />
+          
+          <Input 
+            label="Mot de passe" 
+            value={password} 
+            onChangeText={(t) => { setPassword(t); setError(''); }} 
+            placeholder="••••••••" 
+            secureTextEntry={!showPassword}
+            rightIcon={showPassword ? '◉' : '○'} 
+            onRightIconPress={() => setShowPassword(!showPassword)}
+            dark 
+          />
 
           {error ? (
             <View style={styles.errorBox}>
@@ -66,198 +67,33 @@ export default function LoginScreen({ navigation }: any) {
             </View>
           ) : null}
 
-          <Text style={styles.label}>Email ou Téléphone</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              setError("");
-            }}
-            placeholder="kofi@email.com ou +228 90 00 00 00"
-            placeholderTextColor={Colors.gray}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <Text style={styles.label}>Mot de passe</Text>
-          <View style={styles.passwordRow}>
-            <TextInput
-              style={styles.passwordInput}
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                setError("");
-              }}
-              placeholder="••••••••"
-              placeholderTextColor={Colors.gray}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity
-              style={styles.eyeBtn}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Text style={styles.eyeIcon}>{showPassword ? "🙈" : "👁️"}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.loginBtn, loading && styles.loginBtnDisabled]}
-            activeOpacity={0.8}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={Colors.white} />
-            ) : (
-              <Text style={styles.loginBtnText}>Se connecter</Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>ou</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.registerLink}
-            onPress={() => navigation.navigate("Register")}
-          >
-            <Text style={styles.registerLinkText}>
-              Pas encore de compte ?{" "}
-              <Text style={styles.registerLinkBold}>Créer un compte</Text>
-            </Text>
-          </TouchableOpacity>
+          <Button title="Se connecter" onPress={handleLogin} variant="primary" size="lg" fullWidth loading={loading} />
         </View>
 
-        <Text style={styles.badge}>
-          Hackathon MIABE 2026 · Darollo Technologies
-        </Text>
+        {/* Lien register */}
+        <TouchableOpacity style={styles.linkArea} onPress={() => navigation.navigate('Register')}>
+          <Text style={styles.linkText}>
+            Nouveau sur ChainCacao ? <Text style={styles.linkBold}>Créer un compte</Text>
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.darkBase },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xxl * 2,
-    paddingBottom: Spacing.xl,
-  },
-  logoArea: { alignItems: "center", marginBottom: Spacing.xl },
-  form: {
-    backgroundColor: Colors.primaryDark,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
-    marginBottom: Spacing.xl,
-  },
-  formTitle: {
-    fontFamily: "serif",
-    fontSize: FontSize.xl,
-    fontWeight: "700",
-    color: Colors.white,
-    textAlign: "center",
-    marginBottom: Spacing.lg,
-  },
-  errorBox: {
-    backgroundColor: Colors.errorBg,
-    borderRadius: BorderRadius.sm,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.alertRed,
-  },
-  errorText: {
-    fontFamily: "System",
-    fontSize: FontSize.sm,
-    color: Colors.alertRed,
-  },
-  label: {
-    fontFamily: "System",
-    fontSize: FontSize.sm,
-    color: Colors.lightNeutral,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.md,
-  },
-  input: {
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.md,
-    fontSize: FontSize.md,
-    fontFamily: "System",
-    color: Colors.white,
-    minHeight: 50,
-  },
-  passwordRow: { flexDirection: "row", alignItems: "center" },
-  passwordInput: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.md,
-    fontSize: FontSize.md,
-    fontFamily: "System",
-    color: Colors.white,
-    minHeight: 50,
-  },
-  eyeBtn: { padding: Spacing.sm, marginLeft: Spacing.xs },
-  eyeIcon: { fontSize: 20 },
-  forgotPassword: { alignItems: "flex-end", marginTop: Spacing.sm },
-  forgotPasswordText: {
-    fontFamily: "System",
-    fontSize: FontSize.sm,
-    color: Colors.accentWarm,
-  },
-  loginBtn: {
-    backgroundColor: Colors.accentWarm,
-    borderRadius: BorderRadius.sm,
-    paddingVertical: Spacing.md,
-    alignItems: "center",
-    marginTop: Spacing.lg,
-    minHeight: 52,
-    justifyContent: "center",
-  },
-  loginBtnDisabled: { opacity: 0.7 },
-  loginBtnText: {
-    fontFamily: "System",
-    fontSize: FontSize.lg,
-    fontWeight: "700",
-    color: Colors.white,
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: Spacing.lg,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.15)",
-  },
-  dividerText: {
-    marginHorizontal: Spacing.md,
-    fontFamily: "System",
-    fontSize: FontSize.sm,
-    color: Colors.gray,
-  },
-  registerLink: { alignItems: "center" },
-  registerLinkText: {
-    fontFamily: "System",
-    fontSize: FontSize.md,
-    color: Colors.lightNeutral,
-  },
-  registerLinkBold: { color: Colors.accentWarm, fontWeight: "700" },
-  badge: {
-    fontFamily: "System",
-    fontSize: FontSize.xs,
-    color: Colors.lightNeutral,
-    opacity: 0.3,
-    textAlign: "center",
-  },
+  container: { flex: 1, backgroundColor: Colors.dark },
+  scroll: { flexGrow: 1, justifyContent: 'center', padding: Spacing.lg },
+  logoSection: { alignItems: 'center', marginBottom: Spacing.xl },
+  logoRing: { width: 80, height: 80, borderRadius: 40, backgroundColor: Colors.darkCard, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border, marginBottom: Spacing.md },
+  logo: { width: 48, height: 48 },
+  appName: { fontFamily: 'serif', fontSize: FontSize.xxl, fontWeight: '700', color: Colors.textPrimary, letterSpacing: 1 },
+  tagline: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: Spacing.xs },
+  formCard: { backgroundColor: Colors.darkCard, borderRadius: BorderRadius.lg, padding: Spacing.lg, borderWidth: 1, borderColor: Colors.border },
+  formTitle: { fontFamily: 'serif', fontSize: FontSize.xl, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center', marginBottom: Spacing.lg },
+  errorBox: { backgroundColor: Colors.errorBg, borderRadius: BorderRadius.sm, padding: Spacing.md, marginBottom: Spacing.md, borderLeftWidth: 2, borderLeftColor: Colors.error },
+  errorText: { color: Colors.error, fontSize: FontSize.sm },
+  linkArea: { alignItems: 'center', marginTop: Spacing.xl },
+  linkText: { fontSize: FontSize.md, color: Colors.textSecondary },
+  linkBold: { color: Colors.accent, fontWeight: '600' },
 });

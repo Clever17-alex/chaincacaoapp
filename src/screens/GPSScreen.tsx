@@ -1,310 +1,289 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { Colors, Spacing, BorderRadius, FontSize } from '../theme/colors';
-import StepIndicator from '../components/StepIndicator';
-import * as Location from 'expo-location';
-import MapView, { Marker, Circle } from 'react-native-maps';
+import React, { useState, useRef, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
+import { Colors, Spacing, BorderRadius, FontSize } from "../theme/colors";
+import Button from "../components/Button";
+import MapView, { Marker, Circle } from "react-native-maps";
+import * as Location from "expo-location";
 
 export default function GPSScreen({ navigation, route }: any) {
-  const [captured, setCaptured] = useState(false);
   const [coords, setCoords] = useState({ lat: 6.12345, lng: 1.23456 });
+  const [captured, setCaptured] = useState(false);
   const [loading, setLoading] = useState(true);
   const mapRef = useRef<MapView>(null);
 
-  // Obtenir la position au démarrage
   useEffect(() => {
-    getCurrentLocation();
+    captureLocation();
   }, []);
 
-  const getCurrentLocation = async () => {
+  const captureLocation = async () => {
+    setLoading(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission refusée', 'La localisation GPS est nécessaire pour la traçabilité EUDR.');
-        setLoading(false);
-        return;
-      }
-
+      if (status !== "granted") return;
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Highest,
       });
-
       const newCoords = {
         lat: location.coords.latitude,
         lng: location.coords.longitude,
       };
-
       setCoords(newCoords);
       setCaptured(true);
-
-      // Centrer la carte sur la position
-      mapRef.current?.animateToRegion({
-        latitude: newCoords.lat,
-        longitude: newCoords.lng,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 1000);
-    } catch (err) {
-      Alert.alert('Erreur GPS', 'Impossible d\'obtenir votre position. Vérifiez votre connexion.');
+      mapRef.current?.animateToRegion(
+        {
+          latitude: newCoords.lat,
+          longitude: newCoords.lng,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        },
+        1000,
+      );
+    } catch (e) {
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCapture = async () => {
-    await getCurrentLocation();
-  };
-
-  const handleNext = () => {
-    navigation.navigate('Photo', {
-      lotData: { ...route.params.lotData, location: coords },
-    });
-  };
-
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backArrow}>←</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.back}>← Retour</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Localisation GPS</Text>
-        <View style={styles.backBtn} />
+        <View style={{ width: 60 }} />
       </View>
 
-      <StepIndicator currentStep={2} totalSteps={3} labels={['Infos', 'Localisation', 'Photo']} />
-
-      <View style={styles.content}>
-        {/* CARTE RÉELLE */}
-        <View style={styles.mapContainer}>
-          {loading ? (
-            <View style={styles.mapLoading}>
-              <ActivityIndicator size="large" color={Colors.accentWarm} />
-              <Text style={styles.mapLoadingText}>Acquisition GPS...</Text>
-            </View>
-          ) : (
-            <MapView
-              ref={mapRef}
-              style={styles.map}
-              initialRegion={{
-                latitude: coords.lat,
-                longitude: coords.lng,
-                latitudeDelta: 0.005,
-                longitudeDelta: 0.005,
-              }}
-              showsUserLocation
-              showsMyLocationButton
-              mapType="satellite"
-            >
-              {/* Cercle de précision */}
-              <Circle
-                center={{ latitude: coords.lat, longitude: coords.lng }}
-                radius={15}
-                fillColor="rgba(196,122,43,0.2)"
-                strokeColor={Colors.accentWarm}
-                strokeWidth={2}
-              />
-
-              {/* Marqueur de la parcelle */}
-              <Marker
-                coordinate={{ latitude: coords.lat, longitude: coords.lng }}
-                title="Parcelle de cacao"
-                description={`${coords.lat.toFixed(5)}° N, ${coords.lng.toFixed(5)}° E`}
-              >
-                <View style={styles.markerContainer}>
-                  <View style={styles.markerOuter}>
-                    <Text style={styles.markerIcon}>🌱</Text>
-                  </View>
-                  <View style={styles.markerArrow} />
-                </View>
-              </Marker>
-            </MapView>
-          )}
-
-          {/* Overlay d'info en bas de la carte */}
-          {captured && (
-            <View style={styles.coordsOverlay}>
-              <View style={styles.coordsRow}>
-                <View style={styles.greenDot} />
-                <Text style={styles.coordsLabel}>Position GPS précise</Text>
-              </View>
-              <Text style={styles.coordsValue}>
-                {coords.lat.toFixed(6)}° N / {coords.lng.toFixed(6)}° E
-              </Text>
-              <Text style={styles.coordsHint}>
-                Cette position sera enregistrée sur la blockchain pour la conformité EUDR
-              </Text>
-            </View>
-          )}
+      {/* Steps */}
+      <View style={styles.steps}>
+        <View style={[styles.step, styles.stepDone]}>
+          <Text style={styles.stepTextDone}>✓</Text>
         </View>
+        <View style={[styles.stepLine, styles.stepLineDone]} />
+        <View style={[styles.step, styles.stepActive]}>
+          <Text style={styles.stepTextActive}>2</Text>
+        </View>
+        <View style={styles.stepLine} />
+        <View style={styles.step}>
+          <Text style={styles.stepText}>3</Text>
+        </View>
+      </View>
 
-        {/* Boutons */}
-        <TouchableOpacity
-          style={styles.captureBtn}
-          activeOpacity={0.7}
-          onPress={handleCapture}
-          disabled={loading}
-        >
-          <Text style={styles.captureBtnText}>
-            {loading ? 'Acquisition...' : captured ? '📍 Actualiser ma position' : '📍 Capturer ma position'}
-          </Text>
-        </TouchableOpacity>
+      {/* Carte */}
+      <View style={styles.mapContainer}>
+        {loading ? (
+          <View style={styles.loading}>
+            <ActivityIndicator size="large" color={Colors.accent} />
+            <Text style={styles.loadingText}>Acquisition GPS...</Text>
+          </View>
+        ) : (
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            initialRegion={{
+              latitude: coords.lat,
+              longitude: coords.lng,
+              latitudeDelta: 0.005,
+              longitudeDelta: 0.005,
+            }}
+            mapType="satellite"
+            customMapStyle={darkMapStyle}
+          >
+            <Marker
+              coordinate={{ latitude: coords.lat, longitude: coords.lng }}
+            >
+              <View style={styles.markerOuter}>
+                <View style={styles.markerInner} />
+              </View>
+            </Marker>
+            <Circle
+              center={{ latitude: coords.lat, longitude: coords.lng }}
+              radius={15}
+              fillColor="rgba(200,150,78,0.15)"
+              strokeColor={Colors.accent}
+              strokeWidth={2}
+            />
+          </MapView>
+        )}
 
-        <TouchableOpacity
-          style={[styles.nextBtn, !captured && styles.nextBtnDisabled]}
-          activeOpacity={0.8}
-          onPress={handleNext}
+        {captured && (
+          <View style={styles.coordsBar}>
+            <View>
+              <Text style={styles.coordsLabel}>Position enregistrée</Text>
+              <Text style={styles.coordsValue}>
+                {coords.lat.toFixed(6)}°N, {coords.lng.toFixed(6)}°E
+              </Text>
+            </View>
+            <View style={styles.precisionBadge}>
+              <Text style={styles.precisionText}>±5m</Text>
+            </View>
+          </View>
+        )}
+      </View>
+
+      {/* Actions */}
+      <View style={styles.bottom}>
+        <Button
+          title="Actualiser la position"
+          onPress={captureLocation}
+          variant="outline"
+          size="md"
+          fullWidth
+        />
+        <Button
+          title="Suivant — Photo du lot"
+          onPress={() =>
+            navigation.navigate("Photo", {
+              lotData: { ...route.params.lotData, location: coords },
+            })
+          }
+          variant="primary"
+          size="lg"
+          fullWidth
           disabled={!captured}
-        >
-          <Text style={styles.nextBtnText}>Suivant — Photo →</Text>
-        </TouchableOpacity>
+        />
       </View>
     </View>
   );
 }
 
+const darkMapStyle = [
+  { elementType: "geometry", stylers: [{ color: "#1A1410" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#B8A99A" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#0D0A07" }] },
+  {
+    featureType: "water",
+    elementType: "geometry",
+    stylers: [{ color: "#2A2119" }],
+  },
+  {
+    featureType: "road",
+    elementType: "geometry",
+    stylers: [{ color: "#2E261E" }],
+  },
+];
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.lightNeutral },
+  container: { flex: 1, backgroundColor: Colors.dark },
   header: {
-    backgroundColor: Colors.primaryDark,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xxl + Spacing.sm,
     paddingBottom: Spacing.md,
   },
-  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  backArrow: { fontSize: FontSize.xl, color: Colors.white },
-  headerTitle: { fontFamily: 'serif', fontSize: FontSize.lg, fontWeight: '700', color: Colors.white },
-  content: { flex: 1, padding: Spacing.lg },
-  
-  // Carte
+  back: { color: Colors.accent, fontSize: FontSize.md },
+  headerTitle: {
+    fontFamily: "serif",
+    fontSize: FontSize.lg,
+    fontWeight: "700",
+    color: Colors.textPrimary,
+  },
+  steps: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.darkLight,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  step: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.darkInput,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepActive: { backgroundColor: Colors.accent },
+  stepDone: { backgroundColor: Colors.success },
+  stepText: {
+    fontSize: FontSize.sm,
+    fontWeight: "700",
+    color: Colors.textMuted,
+  },
+  stepTextActive: { color: Colors.dark, fontWeight: "700" },
+  stepTextDone: { color: Colors.textPrimary },
+  stepLine: { width: 36, height: 2, backgroundColor: Colors.border },
+  stepLineDone: { backgroundColor: Colors.success },
   mapContainer: {
     flex: 1,
+    margin: Spacing.lg,
     borderRadius: BorderRadius.md,
-    overflow: 'hidden',
-    marginBottom: Spacing.md,
-    borderWidth: 2,
-    borderColor: Colors.accentWarm,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  map: {
+  map: { flex: 1 },
+  loading: {
     flex: 1,
+    backgroundColor: Colors.darkCard,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  mapLoading: {
-    flex: 1,
-    backgroundColor: Colors.primaryDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  mapLoadingText: {
-    fontFamily: 'System',
-    fontSize: FontSize.md,
-    color: Colors.lightNeutral,
-    marginTop: Spacing.md,
-    opacity: 0.6,
-  },
-  
-  // Marqueur personnalisé
-  markerContainer: {
-    alignItems: 'center',
-  },
+  loadingText: { color: Colors.textSecondary, marginTop: Spacing.md },
   markerOuter: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.accentWarm,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: Colors.white,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(200,150,78,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  markerIcon: {
-    fontSize: 22,
+  markerInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: Colors.accent,
+    borderWidth: 2,
+    borderColor: Colors.dark,
   },
-  markerArrow: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderTopWidth: 10,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderTopColor: Colors.accentWarm,
-    marginTop: -2,
-  },
-  
-  // Overlay coordonnées
-  coordsOverlay: {
-    position: 'absolute',
+  coordsBar: {
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(14,13,11,0.85)',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "rgba(13,10,7,0.9)",
     padding: Spacing.md,
-    borderTopLeftRadius: BorderRadius.md,
-    borderTopRightRadius: BorderRadius.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
-  coordsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
-  },
-  greenDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: Colors.forestGreen,
-    marginRight: Spacing.sm,
-  },
-  coordsLabel: {
-    fontFamily: 'System',
-    fontSize: FontSize.sm,
-    color: Colors.forestGreen,
-    fontWeight: '600',
-  },
+  coordsLabel: { fontSize: FontSize.xs, color: Colors.success },
   coordsValue: {
-    fontFamily: 'monospace',
-    fontSize: FontSize.md,
-    color: Colors.accentWarm,
-    fontWeight: '700',
-    marginBottom: Spacing.xs,
+    fontFamily: "monospace",
+    fontSize: FontSize.sm,
+    color: Colors.accent,
+    fontWeight: "600",
+    marginTop: 2,
   },
-  coordsHint: {
-    fontFamily: 'System',
+  precisionBadge: {
+    backgroundColor: Colors.successBg,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
+  precisionText: {
     fontSize: FontSize.xs,
-    color: Colors.gray,
+    color: Colors.success,
+    fontWeight: "600",
   },
-  
-  // Boutons
-  captureBtn: {
-    borderWidth: 2,
-    borderColor: Colors.accentWarm,
-    borderRadius: BorderRadius.sm,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-    minHeight: 48,
-    justifyContent: 'center',
-  },
-  captureBtnText: {
-    fontFamily: 'System',
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: Colors.accentWarm,
-  },
-  nextBtn: {
-    backgroundColor: Colors.primaryDark,
-    borderRadius: BorderRadius.sm,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    minHeight: 48,
-    justifyContent: 'center',
-  },
-  nextBtnDisabled: { opacity: 0.4 },
-  nextBtnText: {
-    fontFamily: 'System',
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.white,
+  bottom: {
+    padding: Spacing.lg,
+    gap: Spacing.sm,
+    backgroundColor: Colors.darkLight,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
   },
 });

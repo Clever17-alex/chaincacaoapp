@@ -1,35 +1,29 @@
 import React, { useEffect, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-} from "react-native";
+import { View, Text, StyleSheet, Image, Animated } from "react-native";
 import { Colors, Spacing, BorderRadius, FontSize } from "../theme/colors";
-import Logo from "../components/Logo";
+import Button from "../components/Button";
 
 export default function SplashScreen({ navigation }: any) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-  const logoScale = useRef(new Animated.Value(0.8)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 900,
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
-        duration: 800,
+        duration: 900,
         useNativeDriver: true,
       }),
-      Animated.spring(logoScale, {
+      Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 4,
-        tension: 10,
+        friction: 6,
+        tension: 40,
         useNativeDriver: true,
       }),
     ]).start();
@@ -37,38 +31,50 @@ export default function SplashScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Logo area */}
       <Animated.View
         style={[
           styles.logoArea,
           {
             opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }, { scale: logoScale }],
+            transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
           },
         ]}
       >
-        <Logo size={100} showText={true} showTagline={true} />
+        <View style={styles.logoWrapper}>
+          <Image
+            source={require("../../assets/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+        <Text style={styles.appName}>ChainCacao</Text>
+        <Text style={styles.tagline}>
+          Traçabilité blockchain{"\n"}du cacao togolais
+        </Text>
+        <View style={styles.divider} />
+        <Text style={styles.subtitle}>
+          Conforme EUDR · 3 minutes · Sans fraude
+        </Text>
       </Animated.View>
 
-      {/* Buttons */}
       <Animated.View style={[styles.buttonArea, { opacity: fadeAnim }]}>
-        <TouchableOpacity
-          style={styles.primaryBtn}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate("Login")}
-        >
-          <Text style={styles.primaryBtnText}>Se connecter</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.outlineBtn}
-          activeOpacity={0.6}
-          onPress={() => navigation.navigate("Register")}
-        >
-          <Text style={styles.outlineBtnText}>Créer un compte</Text>
-        </TouchableOpacity>
-
-        {/* Badge */}
+        <View style={styles.glassCard}>
+          <Button
+            title="Se connecter"
+            onPress={() => navigation.navigate("Login")}
+            variant="primary"
+            size="lg"
+            fullWidth
+          />
+          <View style={styles.buttonSpacer} />
+          <Button
+            title="Créer un compte"
+            onPress={() => navigation.navigate("Register")}
+            variant="outline"
+            size="lg"
+            fullWidth
+          />
+        </View>
         <Text style={styles.badge}>
           Hackathon MIABE 2026 · Darollo Technologies
         </Text>
@@ -80,56 +86,61 @@ export default function SplashScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.darkBase,
+    backgroundColor: Colors.dark,
     justifyContent: "space-between",
-    paddingHorizontal: Spacing.lg * 2,
-    paddingVertical: Spacing.xxl * 2,
+    padding: Spacing.lg,
   },
-  logoArea: {
-    flex: 1,
+  logoArea: { flex: 1, justifyContent: "center", alignItems: "center" },
+  logoWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.darkCard,
+    borderWidth: 1,
+    borderColor: Colors.border,
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: Spacing.lg,
   },
-  buttonArea: {
-    gap: Spacing.md,
-    alignItems: "center",
-  },
-  primaryBtn: {
-    backgroundColor: Colors.accentWarm,
-    borderRadius: BorderRadius.sm,
-    paddingVertical: Spacing.md,
-    width: "100%",
-    alignItems: "center",
-    minHeight: 52,
-    justifyContent: "center",
-  },
-  primaryBtnText: {
-    fontFamily: "System",
-    fontSize: FontSize.lg,
+  logo: { width: 64, height: 64 },
+  appName: {
+    fontFamily: "serif",
+    fontSize: FontSize.title,
     fontWeight: "700",
-    color: Colors.white,
+    color: Colors.textPrimary,
+    letterSpacing: 1,
   },
-  outlineBtn: {
-    borderWidth: 1.5,
-    borderColor: Colors.white,
-    borderRadius: BorderRadius.sm,
-    paddingVertical: Spacing.md,
-    width: "100%",
-    alignItems: "center",
-    minHeight: 52,
-    justifyContent: "center",
+  tagline: {
+    fontSize: FontSize.md,
+    color: Colors.textSecondary,
+    textAlign: "center",
+    lineHeight: 24,
+    marginTop: Spacing.sm,
   },
-  outlineBtnText: {
-    fontFamily: "System",
-    fontSize: FontSize.lg,
-    fontWeight: "600",
-    color: Colors.white,
+  divider: {
+    width: 40,
+    height: 1,
+    backgroundColor: Colors.accent,
+    marginVertical: Spacing.md,
   },
+  subtitle: {
+    fontSize: FontSize.sm,
+    color: Colors.accentLight,
+    letterSpacing: 0.5,
+  },
+  buttonArea: { gap: Spacing.md },
+  glassCard: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.lg,
+  },
+  buttonSpacer: { height: Spacing.sm },
   badge: {
-    fontFamily: "System",
     fontSize: FontSize.xs,
-    color: Colors.lightNeutral,
-    opacity: 0.3,
-    marginTop: Spacing.lg,
+    color: Colors.textMuted,
+    textAlign: "center",
+    marginTop: Spacing.md,
   },
 });

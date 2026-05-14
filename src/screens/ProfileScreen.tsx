@@ -1,379 +1,245 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
-  Animated,
-  Alert,
-} from 'react-native';
-import { Colors, Spacing, FontSize, BorderRadius } from '../theme/colors';
-import BottomNav from '../components/BottomNav';
-import { useAuth } from '../contexts/AuthContext';
+} from "react-native";
+import { Colors, Spacing, BorderRadius, FontSize } from "../theme/colors";
+import BottomNav from "./BottomNav";
+import Button from "../components/Button";
+import Input from "../components/Input";
+import { useAuth } from "../contexts/AuthContext";
 
-export default function ProfileScreen({ navigation }: any) {
-  const { navigate } = navigation;
-  const { user, logout } = useAuth();
+export default function ProfileScreen({ navigation, currentRoute }: any) {
+  const { user, logout, updateUser } = useAuth();
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(user?.name || '');
-  const [organization, setOrganization] = useState(user?.organization || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [scaleAnim] = useState(new Animated.Value(1));
+  const [name, setName] = useState(user?.name || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [organisation, setOrganisation] = useState(user?.organisation || "");
+
+  const activeTab =
+    currentRoute === "Home"
+      ? "home"
+      : currentRoute === "Lots"
+        ? "lots"
+        : currentRoute === "Alerts"
+          ? "alerts"
+          : "profile";
+
+  const handleLogout = async () => {
+    await logout();
+    navigation.navigate("Login");
+  };
+
+  const handleTabPress = (tab: string) => {
+    if (tab === "home") navigation.navigate("Home");
+    else if (tab === "lots") navigation.navigate("Lots");
+    else if (tab === "alerts") navigation.navigate("Alerts");
+  };
 
   const handleSave = () => {
+    updateUser({ name, phone, organisation });
     setEditing(false);
-    Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 1.1, duration: 150, useNativeDriver: true }),
-      Animated.timing(scaleAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
-    ]).start();
   };
 
-  const handleLogout = () => {
-    Alert.alert('Déconnexion', 'Voulez-vous vraiment vous déconnecter ?', [
-      { text: 'Annuler', style: 'cancel' },
-      {
-        text: 'Déconnecter',
-        style: 'destructive',
-        onPress: async () => {
-          await logout();
-          navigate('Login');
-        },
-      },
-    ]);
+  const getInitials = () => {
+    if (!user?.name || user.name === "Producteur") return "CC";
+    const parts = user.name.trim().split(" ");
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+    return user.name.slice(0, 2).toUpperCase();
   };
-
-  const menuItems = [
-    { icon: '📋', label: 'Mes certificats', color: Colors.forestGreen },
-    { icon: '📍', label: 'Parcelles enregistrées', color: Colors.accentWarm },
-    { icon: '💰', label: 'Paiements', color: Colors.forestGreen },
-    { icon: '📖', label: 'Guide EUDR', color: Colors.accentWarm },
-    { icon: '❓', label: 'Aide & Support', color: Colors.grayDark },
-    { icon: '⚙️', label: 'Paramètres', color: Colors.grayDark },
-  ];
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profil</Text>
-        <TouchableOpacity style={styles.editBtn} onPress={() => setEditing(!editing)}>
-          <Text style={styles.editBtnText}>{editing ? 'Annuler' : 'Modifier'}</Text>
-        </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Avatar Section */}
         <View style={styles.avatarSection}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {name ? name.charAt(0).toUpperCase() : 'K'}
-              {name.split(' ')[1]?.charAt(0).toUpperCase() || 'M'}
-            </Text>
+            <Text style={styles.avatarText}>{getInitials()}</Text>
           </View>
-          <Text style={styles.farmerId}>{user?.actorID || 'AGRI-TOGO-0045'}</Text>
-          <Text style={styles.farmerLabel}>Producteur vérifié</Text>
+          <Text style={styles.userName}>{user?.name || "Utilisateur"}</Text>
+          <Text style={styles.userRole}>{user?.role || "agriculteur"}</Text>
+          <Text style={styles.userRegion}>{user?.region || "Togo"}</Text>
         </View>
 
-        <View style={styles.infoCard}>
-          <Text style={styles.cardTitle}>Informations personnelles</Text>
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Nom complet</Text>
-            {editing ? (
-              <TextInput style={styles.fieldInput} value={name} onChangeText={setName} />
-            ) : (
-              <Text style={styles.fieldValue}>{name}</Text>
-            )}
-          </View>
-          <View style={styles.divider} />
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Organisation</Text>
-            {editing ? (
-              <TextInput style={styles.fieldInput} value={organization} onChangeText={setOrganization} />
-            ) : (
-              <Text style={styles.fieldValue}>{organization}</Text>
-            )}
-          </View>
-          <View style={styles.divider} />
-
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Email</Text>
-            <Text style={styles.fieldValue}>{email}</Text>
-          </View>
-        </View>
-
-        {editing && (
-          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-            <TouchableOpacity style={styles.saveBtn} activeOpacity={0.8} onPress={handleSave}>
-              <Text style={styles.saveBtnText}>💾 Enregistrer les modifications</Text>
+        {/* Informations */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>Informations</Text>
+            <TouchableOpacity onPress={() => setEditing(!editing)}>
+              <Text style={styles.editBtn}>
+                {editing ? "Annuler" : "Modifier"}
+              </Text>
             </TouchableOpacity>
-          </Animated.View>
-        )}
+          </View>
 
-        <View style={styles.menuCard}>
-          {menuItems.map((item, index) => (
-            <React.Fragment key={index}>
-              {index > 0 && <View style={styles.menuDivider} />}
-              <TouchableOpacity style={styles.menuItem} activeOpacity={0.6}>
-                <Text style={styles.menuIcon}>{item.icon}</Text>
-                <Text style={styles.menuLabel}>{item.label}</Text>
-                <Text style={styles.menuArrow}>→</Text>
-              </TouchableOpacity>
-            </React.Fragment>
-          ))}
+          {editing ? (
+            <>
+              <Input label="Nom" value={name} onChangeText={setName} dark />
+              <Input
+                label="Téléphone"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                dark
+              />
+              <Input
+                label="Organisation"
+                value={organisation}
+                onChangeText={setOrganisation}
+                dark
+              />
+              <Button
+                title="Enregistrer"
+                onPress={handleSave}
+                variant="primary"
+                size="md"
+                fullWidth
+              />
+            </>
+          ) : (
+            <>
+              <InfoRow label="Email" value={user?.email || "—"} />
+              <InfoRow label="Téléphone" value={user?.phone || name || "—"} />
+              <InfoRow
+                label="Organisation"
+                value={user?.organisation || organisation || "—"}
+              />
+              <InfoRow label="Région" value={user?.region || "—"} last />
+            </>
+          )}
         </View>
 
-        <TouchableOpacity style={styles.logoutBtn} activeOpacity={0.7} onPress={handleLogout}>
-          <Text style={styles.logoutBtnText}>🚪 Se déconnecter</Text>
+        {/* Déconnexion */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Se déconnecter</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>ChainCacao v1.0.0 · Hackathon MIABE 2026</Text>
+        <Text style={styles.version}>ChainCacao v1.0 · MIABE 2026</Text>
       </ScrollView>
 
-      <BottomNav
-        activeTab="profile"
-        onTabPress={(tab) => {
-          if (tab === 'home') navigate('Home');
-          else if (tab === 'plus') navigate('EUDR');
-          else if (tab === 'history') navigate('History');
-          else if (tab === 'profile') navigate('Profile');
-          else if (tab === 'plus') navigate('EUDR');
-        }}
-      />
+      <BottomNav activeTab={activeTab} onTabPress={handleTabPress} />
     </View>
   );
 }
 
-// ... styles (identiques à l'ancien fichier ProfileScreen) ...
+function InfoRow({
+  label,
+  value,
+  last = false,
+}: {
+  label: string;
+  value: string;
+  last?: boolean;
+}) {
+  return (
+    <>
+      <View style={infoStyles.row}>
+        <Text style={infoStyles.label}>{label}</Text>
+        <Text style={infoStyles.value}>{value}</Text>
+      </View>
+      {!last && <View style={infoStyles.divider} />}
+    </>
+  );
+}
+
+const infoStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: Spacing.sm,
+  },
+  label: { fontSize: FontSize.md, color: Colors.textMuted },
+  value: {
+    fontSize: FontSize.md,
+    color: Colors.textPrimary,
+    fontWeight: "500",
+  },
+  divider: { height: 1, backgroundColor: Colors.border },
+});
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.lightNeutral,
-  },
+  container: { flex: 1, backgroundColor: Colors.dark },
   header: {
-    backgroundColor: Colors.primaryDark,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.xxl + Spacing.sm,
     paddingBottom: Spacing.md,
+    alignItems: "center",
   },
   headerTitle: {
-    fontFamily: 'serif',
+    fontFamily: "serif",
     fontSize: FontSize.xl,
-    fontWeight: '700',
-    color: Colors.white,
+    fontWeight: "700",
+    color: Colors.textPrimary,
   },
-  editBtn: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs + 2,
-    borderRadius: BorderRadius.lg,
-  },
-  editBtnText: {
-    fontFamily: 'System',
-    fontSize: FontSize.sm,
-    color: Colors.white,
-    fontWeight: '600',
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: Spacing.lg,
-  },
-  avatarSection: {
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
-  },
+  scroll: { flex: 1 },
+  scrollContent: { padding: Spacing.lg },
+  avatarSection: { alignItems: "center", marginBottom: Spacing.lg },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.accentWarm,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+    backgroundColor: Colors.accent,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.md,
   },
-  avatarText: {
-    fontFamily: 'System',
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.white,
+  avatarText: { fontSize: FontSize.xxl, fontWeight: "700", color: Colors.dark },
+  userName: {
+    fontSize: FontSize.xl,
+    fontWeight: "700",
+    color: Colors.textPrimary,
   },
-  cameraBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: Colors.primaryDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.white,
-  },
-  cameraIcon: {
-    fontSize: 14,
-  },
-  farmerId: {
-    fontFamily: 'monospace',
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: Colors.primaryDark,
-    marginTop: Spacing.sm,
-  },
-  farmerLabel: {
-    fontFamily: 'System',
+  userRole: {
     fontSize: FontSize.sm,
-    color: Colors.forestGreen,
-    fontWeight: '600',
+    color: Colors.accent,
     marginTop: 2,
+    textTransform: "capitalize",
   },
-  infoCard: {
-    backgroundColor: Colors.white,
+  userRegion: { fontSize: FontSize.sm, color: Colors.textMuted, marginTop: 2 },
+  card: {
+    backgroundColor: Colors.darkCard,
     borderRadius: BorderRadius.md,
     padding: Spacing.lg,
     marginBottom: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.cardBorder,
+    borderColor: Colors.border,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.md,
   },
   cardTitle: {
-    fontFamily: 'serif',
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: Colors.primaryDark,
-    marginBottom: Spacing.md,
+    fontFamily: "serif",
+    fontSize: FontSize.lg,
+    fontWeight: "700",
+    color: Colors.textPrimary,
   },
-  field: {
-    paddingVertical: Spacing.sm,
-  },
-  fieldLabel: {
-    fontFamily: 'System',
-    fontSize: FontSize.xs,
-    color: Colors.gray,
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  fieldValue: {
-    fontFamily: 'System',
-    fontSize: FontSize.md,
-    color: Colors.primaryDark,
-    fontWeight: '500',
-  },
-  fieldInput: {
-    fontFamily: 'System',
-    fontSize: FontSize.md,
-    color: Colors.primaryDark,
-    fontWeight: '500',
-    borderBottomWidth: 2,
-    borderBottomColor: Colors.accentWarm,
-    paddingVertical: Spacing.xs,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(59,31,14,0.06)',
-  },
-  saveBtn: {
-    backgroundColor: Colors.forestGreen,
-    borderRadius: BorderRadius.sm,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-    marginBottom: Spacing.md,
-    minHeight: 52,
-    justifyContent: 'center',
-  },
-  saveBtnText: {
-    fontFamily: 'System',
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  menuCard: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.sm,
-    marginBottom: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing.md - 2,
-    paddingHorizontal: Spacing.sm,
-  },
-  menuIcon: {
-    fontSize: 20,
-    marginRight: Spacing.md,
-  },
-  menuLabel: {
-    fontFamily: 'System',
-    fontSize: FontSize.md,
-    color: Colors.primaryDark,
-    fontWeight: '500',
-    flex: 1,
-  },
-  menuArrow: {
-    fontSize: 16,
-    color: Colors.gray,
-  },
-  menuDivider: {
-    height: 1,
-    backgroundColor: 'rgba(59,31,14,0.05)',
-    marginLeft: 44,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: Spacing.sm,
-    marginBottom: Spacing.md,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  statNumber: {
-    fontFamily: 'serif',
-    fontSize: FontSize.xl,
-    fontWeight: '700',
-    color: Colors.accentWarm,
-    marginBottom: 2,
-  },
-  statLabel: {
-    fontFamily: 'System',
-    fontSize: FontSize.xs,
-    color: Colors.gray,
-    textAlign: 'center',
-  },
+  editBtn: { fontSize: FontSize.md, color: Colors.accent, fontWeight: "600" },
   logoutBtn: {
     borderWidth: 1.5,
-    borderColor: Colors.alertRed,
+    borderColor: Colors.error,
     borderRadius: BorderRadius.sm,
     paddingVertical: Spacing.md,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: Spacing.md,
   },
-  logoutBtnText: {
-    fontFamily: 'System',
-    fontSize: FontSize.md,
-    fontWeight: '600',
-    color: Colors.alertRed,
-  },
+  logoutText: { fontSize: FontSize.md, fontWeight: "600", color: Colors.error },
   version: {
-    fontFamily: 'System',
     fontSize: FontSize.xs,
-    color: Colors.gray,
-    textAlign: 'center',
-    marginBottom: Spacing.lg,
+    color: Colors.textMuted,
+    textAlign: "center",
+    marginBottom: Spacing.xxl,
   },
 });

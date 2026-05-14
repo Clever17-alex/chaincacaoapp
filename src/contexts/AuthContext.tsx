@@ -1,22 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { storage } from '../utils/storage';
 import { authService } from '../services/authService';
-import api from '../services/api';
+import { User } from '../types';
 
-function getActorIDFromToken(token: string): string | null {
+function decodeJWT(token: string): any {
   try {
     const base64Payload = token.split('.')[1];
     const payload = JSON.parse(atob(base64Payload));
-    return payload.actorID || null;
-  } catch { return null; }
-}
-
-interface User {
-  actorID: string;
-  name: string;
-  role: string;
-  email: string;
-  organization: string;
+    return payload;
+  } catch { return {}; }
 }
 
 interface AuthContextType {
@@ -24,9 +16,10 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (emailOrPhone: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (data: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -40,88 +33,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadStoredAuth = async () => {
     try {
-      const storedToken = await storage.getToken();
-      const storedUser = await storage.getUser();
-      if (storedToken) {
+      const [storedToken, storedUser] = await Promise.all([storage.getToken(), storage.getUser()]);
+      if (storedToken && storedUser && storedUser.email) {
         setToken(storedToken);
-        if (storedUser && storedUser.actorID) {
-          setUser(storedUser);
-        } else {
-          const actorID = getActorIDFromToken(storedToken);
-          if (actorID) {
-            const rebuiltUser: User = { actorID, name: actorID, role: 'FARMER', email: '', organization: '' };
-            setUser(rebuiltUser);
-            await storage.setUser(rebuiltUser);
-          }
-        }
+        setUser(storedUser);
+      } else if (storedToken) {
+        const payload = decodeJWT(storedToken);
+        const rebuilt: User = {
+          id: payload.userId || payload.sub || '',
+          name: payload.name || payload.email?.split('@')[0] || 'Producteur',
+          email: payload.email || '',
+          role: payload.role || 'agriculteur',
+          region: payload.region || '',
+          organisation: payload.organisation || '',
+          phone: payload.phone || '',
+        };
+        setUser(rebuilt);
+        setToken(storedToken);
       }
-    } catch (e) {
-      console.error('Erreur chargement auth:', e);
-    } finally {
+    } catch (e) {} finally {
       setIsLoading(false);
     }
   };
 
-  const createActorIfNeeded = async (actorID: string, email: string, name: string) => {
-    try {
-      console.log('Tentative création acteur:', actorID);
-      await api.post('/api/v1/auth/register', {
-        actorID,
-        name: name || actorID,
-        role: 'FARMER',
-        email: email,
-        organization: 'Coopérative',
-        password: 'autocreated123',
-      });
-      console.log('Acteur créé avec succès:', actorID);
-    } catch (err: any) {
-      // Si l'acteur existe déjà, c'est OK
-      if (err.response?.status === 400 && err.response?.data?.error?.includes('already exists')) {
-        console.log('Acteur existe déjà:', actorID);
-      } else {
-        console.log('Erreur création acteur (peut être normal):', err.response?.data || err.message);
-      }
-    }
-  };
-
-  const login = async (emailOrPhone: string, password: string) => {
-    const response = await authService.login({ emailOrPhone, password });
-    await storage.setToken(response.token);
-    setToken(response.token);
-
-    const actorID = getActorIDFromToken(response.token) || emailOrPhone.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  const login = async (email: string, password: string) => {
+    const response = await authService.login(email, password);
+    const payload = decodeJWT(response.token);
     
-    // Créer l'acteur automatiquement après le login
-    await createActorIfNeeded(actorID, emailOrPhone, response.actor?.name || actorID);
-
     const userData: User = {
-      actorID,
-      name: response.actor?.name || actorID,
-      role: 'FARMER',
-      email: emailOrPhone,
-      organization: response.actor?.organization || '',
+      id: payload.userId || payload.sub || '',
+      name: payload.name || response.user?.name || email.split('@')[0],
+      email: payload.email || email,
+      role: payload.role || response.user?.role || 'agriculteur',
+      region: payload.region || response.user?.region || '',
+      organisation: payload.organisation || response.user?.organisation || '',
+      phone: payload.phone || response.user?.phone || '',
     };
 
+    await storage.setToken(response.token);
     await storage.setUser(userData);
+    setToken(response.token);
     setUser(userData);
-    console.log('User connecté:', userData.actorID);
+    console.log('USER LOGGED IN:', JSON.stringify(userData));
   };
 
   const register = async (data: any) => {
     const response = await authService.register(data);
-    await storage.setToken(response.token);
-    setToken(response.token);
-
-    const actorID = getActorIDFromToken(response.token) || data.actorID;
+    const payload = decodeJWT(response.token);
+    
     const userData: User = {
-      actorID,
-      name: response.actor?.name || data.name,
-      role: 'FARMER',
-      email: response.actor?.email || data.email,
-      organization: response.actor?.organization || data.organization,
+      id: payload.userId || payload.sub || '',
+      name: data.name,
+      email: data.email,
+      role: data.role || 'agriculteur',
+      region: data.region || '',
+      organisation: data.organisation || '',
+      phone: data.phone || '',
     };
 
+    await storage.setToken(response.token);
     await storage.setUser(userData);
+    setToken(response.token);
     setUser(userData);
   };
 
@@ -131,8 +103,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateUser = (data: Partial<User>) => {
+    if (user) {
+      const updated = { ...user, ...data };
+      setUser(updated);
+      storage.setUser(updated);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, isAuthenticated: !!token && !!user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, isAuthenticated: !!token && !!user, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

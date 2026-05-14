@@ -1,56 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { Colors, Spacing, BorderRadius, FontSize } from '../theme/colors';
-import { useAuth } from '../contexts/AuthContext';
+  TouchableOpacity,
+} from "react-native";
+import { Colors, Spacing, FontSize, BorderRadius } from "../theme/colors";
+import Button from "../components/Button";
+import Input from "../components/Input";
+import { useAuth } from "../contexts/AuthContext";
+
+const REGIONS = ["Maritime", "Plateaux", "Centrale", "Kara", "Savanes"];
 
 export default function RegisterScreen({ navigation }: any) {
   const { register } = useAuth();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [organization, setOrganization] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [organisation, setOrganisation] = useState("");
+  const [region, setRegion] = useState("Plateaux");
+  const [phone, setPhone] = useState("");
+  const [showRegions, setShowRegions] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const generateActorID = () => {
-    const num = Math.floor(1000 + Math.random() * 9000);
-    return `AGRI-TOGO-${num}`;
-  };
+  const [error, setError] = useState("");
 
   const handleRegister = async () => {
-    if (!name || !email || !password || !organization) {
-      setError('Veuillez remplir tous les champs');
+    if (!name || !email || !password) {
+      setError("Champs obligatoires manquants");
       return;
     }
-
     setLoading(true);
-    setError('');
-
+    setError("");
     try {
-      const actorID = generateActorID();
       await register({
-        actorID,
         name,
-        role: 'FARMER',
         email,
-        organization,
         password,
+        role: "agriculteur",
+        organisation,
+        region,
+        phone,
       });
-      navigation.navigate('Home');
+      navigation.navigate("Home");
     } catch (err: any) {
-      const message = err.response?.data?.error || "Erreur lors de l'inscription.";
-      setError(message);
+      setError(err.response?.data?.error || "Erreur inscription");
     } finally {
       setLoading(false);
     }
@@ -59,100 +55,113 @@ export default function RegisterScreen({ navigation }: any) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.backArrow}>←</Text>
+          <Text style={styles.backText}>← Retour</Text>
         </TouchableOpacity>
 
         <Text style={styles.title}>Créer un compte</Text>
-        <Text style={styles.subtitle}>
-          Rejoignez les producteurs de cacao traçable
-        </Text>
+        <Text style={styles.subtitle}>Rejoignez la traçabilité blockchain</Text>
 
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
-
-        <Text style={styles.label}>Nom complet</Text>
-        <TextInput
-          style={styles.input}
-          value={name}
-          onChangeText={setName}
-          placeholder="Kofi Mensah"
-          placeholderTextColor={Colors.gray}
-        />
-
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="kofi@email.com"
-          placeholderTextColor={Colors.gray}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-
-        <Text style={styles.label}>Village / Organisation</Text>
-        <TextInput
-          style={styles.input}
-          value={organization}
-          onChangeText={setOrganization}
-          placeholder="Coopérative Koffah, Womé"
-          placeholderTextColor={Colors.gray}
-        />
-
-        <Text style={styles.label}>Mot de passe</Text>
-        <View style={styles.passwordRow}>
-          <TextInput
-            style={styles.passwordInput}
+        <View style={styles.formCard}>
+          <Input
+            label="Nom complet"
+            value={name}
+            onChangeText={setName}
+            placeholder="Kofi Mensah"
+            dark
+          />
+          <Input
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="votre@email.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            dark
+          />
+          <Input
+            label="Mot de passe"
             value={password}
             onChangeText={setPassword}
-            placeholder="Minimum 6 caractères"
-            placeholderTextColor={Colors.gray}
-            secureTextEntry={!showPassword}
+            placeholder="Minimum 8 caractères"
+            secureTextEntry
+            dark
           />
+          <Input
+            label="Téléphone"
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="+228 90 00 00 00"
+            keyboardType="phone-pad"
+            dark
+          />
+          <Input
+            label="Organisation"
+            value={organisation}
+            onChangeText={setOrganisation}
+            placeholder="Coopérative Koffah"
+            dark
+          />
+
+          {/* Sélecteur région */}
+          <Text style={styles.selectLabel}>Région</Text>
           <TouchableOpacity
-            style={styles.eyeBtn}
-            onPress={() => setShowPassword(!showPassword)}
+            style={styles.select}
+            onPress={() => setShowRegions(!showRegions)}
           >
-            <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁️'}</Text>
+            <Text style={styles.selectText}>{region || "Sélectionnez"}</Text>
+            <Text style={styles.selectArrow}>▼</Text>
           </TouchableOpacity>
+          {showRegions && (
+            <View style={styles.dropdown}>
+              {REGIONS.map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  style={styles.dropdownItem}
+                  onPress={() => {
+                    setRegion(r);
+                    setShowRegions(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownText,
+                      r === region && styles.dropdownActive,
+                    ]}
+                  >
+                    {r}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <Button
+            title="Créer mon compte"
+            onPress={handleRegister}
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={loading}
+          />
         </View>
 
-        <Text style={styles.idPreview}>
-          Votre ID: {generateActorID()}
-        </Text>
-
         <TouchableOpacity
-          style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
-          activeOpacity={0.8}
-          onPress={handleRegister}
-          disabled={loading}
+          style={styles.linkArea}
+          onPress={() => navigation.goBack()}
         >
-          {loading ? (
-            <ActivityIndicator color={Colors.white} />
-          ) : (
-            <Text style={styles.primaryBtnText}>Créer mon compte</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.loginLink}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.loginLinkText}>
-            Déjà un compte ? <Text style={styles.loginLinkBold}>Se connecter</Text>
+          <Text style={styles.linkText}>
+            Déjà un compte ? <Text style={styles.linkBold}>Se connecter</Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -161,124 +170,71 @@ export default function RegisterScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.darkBase,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.xxl * 2,
-    paddingBottom: Spacing.xl,
-  },
-  backBtn: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    marginBottom: Spacing.md,
-  },
-  backArrow: {
-    fontSize: 28,
-    color: Colors.white,
-  },
+  container: { flex: 1, backgroundColor: Colors.dark },
+  scroll: { flexGrow: 1, padding: Spacing.lg },
+  backBtn: { marginBottom: Spacing.md },
+  backText: { color: Colors.accent, fontSize: FontSize.md },
   title: {
-    fontFamily: 'serif',
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.white,
+    fontFamily: "serif",
+    fontSize: FontSize.xxl,
+    fontWeight: "700",
+    color: Colors.textPrimary,
     marginBottom: Spacing.xs,
   },
   subtitle: {
-    fontFamily: 'System',
     fontSize: FontSize.md,
-    color: Colors.gray,
+    color: Colors.textSecondary,
     marginBottom: Spacing.xl,
   },
-  errorBox: {
-    backgroundColor: Colors.errorBg,
-    borderRadius: BorderRadius.sm,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.alertRed,
+  formCard: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
+  selectLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: "500",
+    color: Colors.textSecondary,
+    marginBottom: Spacing.xs,
+    marginTop: Spacing.md,
+  },
+  select: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: Colors.darkInput,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md - 2,
+  },
+  selectText: { fontSize: FontSize.md, color: Colors.textPrimary },
+  selectArrow: { fontSize: 10, color: Colors.textMuted },
+  dropdown: {
+    backgroundColor: Colors.darkCard,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginTop: Spacing.xs,
+    overflow: "hidden",
+  },
+  dropdownItem: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.md },
+  dropdownText: { fontSize: FontSize.md, color: Colors.textSecondary },
+  dropdownActive: { color: Colors.accent, fontWeight: "600" },
   errorText: {
-    fontFamily: 'System',
+    color: Colors.error,
     fontSize: FontSize.sm,
-    color: Colors.alertRed,
+    marginBottom: Spacing.md,
+    textAlign: "center",
   },
-  label: {
-    fontFamily: 'System',
-    fontSize: FontSize.sm,
-    color: Colors.lightNeutral,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.md,
-  },
-  input: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.md,
-    fontSize: FontSize.md,
-    fontFamily: 'System',
-    color: Colors.white,
-    minHeight: 50,
-  },
-  passwordRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  passwordInput: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.md,
-    fontSize: FontSize.md,
-    fontFamily: 'System',
-    color: Colors.white,
-    minHeight: 50,
-  },
-  eyeBtn: {
-    padding: Spacing.sm,
-  },
-  eyeIcon: {
-    fontSize: 20,
-  },
-  idPreview: {
-    fontFamily: 'monospace',
-    fontSize: FontSize.sm,
-    color: Colors.accentWarm,
-    marginTop: Spacing.md,
-    textAlign: 'center',
-  },
-  primaryBtn: {
-    backgroundColor: Colors.accentWarm,
-    borderRadius: BorderRadius.sm,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
+  linkArea: {
+    alignItems: "center",
     marginTop: Spacing.xl,
-    minHeight: 52,
-    justifyContent: 'center',
+    marginBottom: Spacing.xxl,
   },
-  primaryBtnDisabled: {
-    opacity: 0.7,
-  },
-  primaryBtnText: {
-    fontFamily: 'System',
-    fontSize: FontSize.lg,
-    fontWeight: '700',
-    color: Colors.white,
-  },
-  loginLink: {
-    alignItems: 'center',
-    marginTop: Spacing.lg,
-  },
-  loginLinkText: {
-    fontFamily: 'System',
-    fontSize: FontSize.md,
-    color: Colors.lightNeutral,
-  },
-  loginLinkBold: {
-    color: Colors.accentWarm,
-    fontWeight: '700',
-  },
+  linkText: { fontSize: FontSize.md, color: Colors.textSecondary },
+  linkBold: { color: Colors.accent, fontWeight: "600" },
 });
